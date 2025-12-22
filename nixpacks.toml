@@ -1,0 +1,21 @@
+# Railway uses Nixpacks for building
+# This file tells Railway how to build your app
+
+[phases.setup]
+nixPkgs = ["python312", "postgresql"]
+
+[phases.install]
+cmds = [
+  "pip install --upgrade pip",
+  "pip install -r requirements.txt"
+]
+
+[phases.build]
+cmds = [
+  "python manage.py tailwind build",
+  "python manage.py collectstatic --noinput"
+]
+
+[start]
+cmd = "gunicorn --bind 0.0.0.0:$PORT --workers 3 seam_website.wsgi:application"
+

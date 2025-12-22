@@ -8,6 +8,7 @@ venv/
 db.sqlite3
 media/
 staticfiles/
+*.log
 
 # Node (if applicable)
 node_modules/
