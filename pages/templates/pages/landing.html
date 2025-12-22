@@ -1,0 +1,132 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seam - Generate X threads from your AI conversations</title>
+    {% tailwind_css %}
+</head>
+<body class="bg-seam-bg text-seam-text font-sans">
+    <!-- Header -->
+    <header class="bg-seam-surface border-b border-seam-border">
+        <div class="max-w-7xl mx-auto px-6 py-6">
+            <div class="flex justify-between items-center">
+                <div class="text-2xl font-semibold text-seam-navy tracking-tight">Seam</div>
+            </div>
+        </div>
+    </header>
+    
+    <main>
+        <!-- Hero Section -->
+        <section class="py-20 text-center">
+            <div class="max-w-4xl mx-auto px-6">
+                <h1 class="text-5xl md:text-6xl font-bold text-seam-text mb-6 leading-tight tracking-tight">
+                    Generate X threads from your AI conversations
+                </h1>
+                <p class="text-xl text-seam-text-secondary mb-12 max-w-2xl mx-auto">
+                    Turn your AI chat responses into engaging X threads with elegant text selection and seamless posting.
+                </p>
+                
+                <!-- Messages -->
+                {% if messages %}
+                <div class="max-w-md mx-auto mb-6">
+                    {% for message in messages %}
+                    <div class="p-3 rounded-lg mb-3 {% if message.tags == 'success' %}bg-green-50 text-seam-success border border-green-200{% else %}bg-red-50 text-seam-error border border-red-200{% endif %}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <!-- Waitlist Form -->
+                <form method="post" class="max-w-md mx-auto">
+                    {% csrf_token %}
+                    <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                        <input 
+                            type="email" 
+                            name="email" 
+                            id="id_email"
+                            placeholder="Enter your email"
+                            required
+                            class="flex-1 px-4 py-3.5 border border-seam-border rounded-lg bg-seam-surface text-seam-text placeholder-seam-text-secondary focus:outline-none focus:border-seam-navy transition-colors text-base"
+                        >
+                        <button 
+                            type="submit" 
+                            class="px-8 py-3.5 bg-seam-navy text-white rounded-lg font-semibold hover:bg-seam-navy-dark transition-colors text-base whitespace-nowrap"
+                        >
+                            Join Waitlist
+                        </button>
+                    </div>
+                    {% if form.email.errors %}
+                    <div class="text-seam-error text-sm mt-2">
+                        {{ form.email.errors.0 }}
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </section>
+        
+        <!-- Features Section -->
+        <section class="py-20 bg-seam-surface">
+            <div class="max-w-7xl mx-auto px-6">
+                <h2 class="text-4xl font-bold text-center text-seam-text mb-4">Features</h2>
+                <p class="text-lg text-seam-text-secondary text-center mb-12 max-w-2xl mx-auto">
+                    Everything you need to turn AI conversations into X threads
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="p-8 rounded-xl bg-seam-bg">
+                        <h3 class="text-xl font-semibold mb-3 text-seam-text">Smart Text Selection</h3>
+                        <p class="text-seam-text-secondary text-[15px]">
+                            Select any portion of text from your AI conversations with an elegant, minimal interface.
+                        </p>
+                    </div>
+                    
+                    <div class="p-8 rounded-xl bg-seam-bg">
+                        <h3 class="text-xl font-semibold mb-3 text-seam-text">Thread Generation</h3>
+                        <p class="text-seam-text-secondary text-[15px]">
+                            Automatically break down your content into concise, engaging tweets that flow naturally.
+                        </p>
+                    </div>
+                    
+                    <div class="p-8 rounded-xl bg-seam-bg">
+                        <h3 class="text-xl font-semibold mb-3 text-seam-text">Direct X Posting</h3>
+                        <p class="text-seam-text-secondary text-[15px]">
+                            Post your entire thread directly to X with one click. No copying, no pasting.
+                        </p>
+                    </div>
+                    
+                    <div class="p-8 rounded-xl bg-seam-bg">
+                        <h3 class="text-xl font-semibold mb-3 text-seam-text">Edit & Refine</h3>
+                        <p class="text-seam-text-secondary text-[15px]">
+                            Edit each tweet individually, split long tweets, and rearrange your thread before posting.
+                        </p>
+                    </div>
+                    
+                    <div class="p-8 rounded-xl bg-seam-bg">
+                        <h3 class="text-xl font-semibold mb-3 text-seam-text">Mention Support</h3>
+                        <p class="text-seam-text-secondary text-[15px]">
+                            Easily add @mentions to tag users in your threads.
+                        </p>
+                    </div>
+                    
+                    <div class="p-8 rounded-xl bg-seam-bg">
+                        <h3 class="text-xl font-semibold mb-3 text-seam-text">Privacy First</h3>
+                        <p class="text-seam-text-secondary text-[15px]">
+                            All data stays local. Your conversations never leave your browser.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="py-12 text-center border-t border-seam-border text-seam-text-secondary">
+        <div class="max-w-7xl mx-auto px-6">
+            <p>&copy; 2024 Seam. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

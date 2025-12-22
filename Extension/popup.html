@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seam</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-text">Seam</span>
+      </div>
+      <button class="btn-icon" id="settings-btn" title="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Settings Panel -->
+    <section id="settings-panel" class="section settings-panel hidden">
+      <div class="settings-header">
+        <h3>Settings</h3>
+        <button class="btn-icon" id="close-settings-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="settings-section">
+        <div class="settings-section-header">
+          <h4>X Account</h4>
+          <button class="btn-icon btn-small-icon" id="refresh-status-btn" title="Refresh status">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Not connected -->
+        <div id="x-disconnected" class="x-status">
+          <div class="x-status-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+          </div>
+          <div class="x-status-text">
+            <strong>Not connected</strong>
+            <p>Connect to post threads directly</p>
+          </div>
+          <button class="btn btn-twitter btn-small" id="connect-x-btn">Connect</button>
+        </div>
+        
+        <!-- Connected -->
+        <div id="x-connected" class="x-status hidden">
+          <div class="x-status-icon x-status-connected">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <div class="x-status-text">
+            <strong>Connected</strong>
+            <p id="x-username">@username</p>
+          </div>
+          <button class="btn btn-secondary btn-small" id="disconnect-x-btn">Disconnect</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- No Capture State -->
+    <section id="no-capture" class="section empty-state">
+      <div class="empty-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+      </div>
+      <h2 class="empty-title">No messages captured</h2>
+      <p class="empty-desc">Ask your LLM to summarise your conversation into tweet, edit in Seam and then post to x</p>
+      <button class="btn btn-primary" id="activate-selection-btn" style="margin-top: 16px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        Select Text on Page
+      </button>
+    </section>
+
+    <!-- Capture Info -->
+    <section id="capture-info" class="section hidden">
+      <div class="capture-card">
+        <div class="capture-header">
+          <span class="capture-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </span>
+          <div class="capture-meta">
+            <span class="capture-count" id="message-count">Text captured</span>
+            <span class="capture-time" id="capture-time"></span>
+          </div>
+        </div>
+        <div class="capture-actions">
+          <button class="btn btn-primary" id="generate-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+            Generate Thread
+          </button>
+          <button class="btn btn-ghost" id="clear-btn" title="Clear">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Thread Editor -->
+    <section id="thread-editor" class="section hidden">
+      <div class="thread-header">
+        <h3 class="thread-title">Thread Draft</h3>
+        <span class="tweet-count" id="tweet-count">0 tweets</span>
+      </div>
+      
+      <div class="tweets-container" id="tweets-container"></div>
+
+      <!-- Mention Dropdown -->
+      <div id="mention-dropdown" class="mention-dropdown hidden">
+        <div class="mention-header">
+          <input type="text" id="mention-search" placeholder="Search username..." autocomplete="off">
+        </div>
+        <div class="mention-list" id="mention-list"></div>
+      </div>
+
+      <!-- Thread Actions -->
+      <div class="thread-actions">
+        <div class="numbering-toggle">
+          <label class="toggle-label">
+            <input type="checkbox" id="numbering-toggle">
+            <span class="toggle-slider"></span>
+            <span class="toggle-text">Add numbering (1/5, 2/5...)</span>
+          </label>
+        </div>
+        
+        <div class="action-buttons">
+          <button class="btn btn-secondary" id="regenerate-btn">Regenerate</button>
+          <button class="btn btn-secondary" id="copy-btn">Copy All</button>
+        </div>
+        
+        <!-- Post Thread Button -->
+        <button class="btn btn-twitter btn-full btn-large" id="post-thread-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+          <span id="post-btn-text">Post Thread</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Toast -->
+    <div id="status-toast" class="status-toast hidden"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

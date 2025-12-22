@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SeamHQ Icon Generator</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #e5e7eb;
+    }
+    h1 {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .instructions {
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+    .icons {
+      display: flex;
+      gap: 30px;
+      margin: 30px 0;
+    }
+    .icon-box {
+      text-align: center;
+    }
+    .icon-box canvas {
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+    }
+    .icon-box p {
+      margin-top: 8px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+    }
+    a {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+    a:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <h1>SeamHQ Icon Generator</h1>
+  
+  <div class="instructions">
+    <p><strong>Instructions:</strong></p>
+    <ol>
+      <li>Open this file in Chrome/Firefox</li>
+      <li>Right-click each icon and select "Save image as..."</li>
+      <li>Save as <code>icon16.png</code>, <code>icon48.png</code>, and <code>icon128.png</code> in the icons folder</li>
+      <li>Update <code>manifest.json</code> to include the icons section (see below)</li>
+    </ol>
+    <p style="margin-top: 15px;">Add this to your manifest.json:</p>
+    <pre style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; font-size: 12px;">
+"icons": {
+  "16": "icons/icon16.png",
+  "48": "icons/icon48.png",
+  "128": "icons/icon128.png"
+}</pre>
+  </div>
+  
+  <div class="icons" id="icons"></div>
+
+  <script>
+    const sizes = [16, 48, 128];
+    const container = document.getElementById('icons');
+    
+    sizes.forEach(size => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#6366f1');
+      gradient.addColorStop(1, '#8b5cf6');
+      
+      // Rounded rectangle background
+      const radius = size * 0.2;
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, radius);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+      
+      // Draw "S" letter
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${size * 0.6}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('S', size / 2, size / 2 + size * 0.05);
+      
+      // Create download link
+      const box = document.createElement('div');
+      box.className = 'icon-box';
+      box.appendChild(canvas);
+      
+      const label = document.createElement('p');
+      label.textContent = `${size}x${size}`;
+      box.appendChild(label);
+      
+      const link = document.createElement('a');
+      link.download = `icon${size}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.textContent = 'Download';
+      box.appendChild(link);
+      
+      container.appendChild(box);
+    });
+  </script>
+</body>
+</html>
+

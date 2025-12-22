@@ -1,0 +1,271 @@
+/**
+ * SeamHQ Content Styles
+ * Light professional theme - overlay and selection highlighting
+ */
+
+/* ============================================================
+   CSS VARIABLES
+   ============================================================ */
+
+:root {
+  --seamhq-bg: #FAF8F5;
+  --seamhq-bg-secondary: #F5F3F0;
+  --seamhq-surface: #FFFFFF;
+  --seamhq-text-primary: #2D2D2D;
+  --seamhq-text-secondary: #6B6B6B;
+  --seamhq-accent: #1E40AF;
+  --seamhq-accent-hover: #1E3A8A;
+  --seamhq-navy: #1E40AF;
+  --seamhq-navy-dark: #1E3A8A;
+  --seamhq-border: #E8E6E3;
+  --seamhq-border-subtle: #F5F3F0;
+  --seamhq-success: #10B981;
+  --seamhq-error: #EF4444;
+}
+
+/* ============================================================
+   OVERLAY CONTAINER
+   ============================================================ */
+
+#seamhq-overlay {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+#seamhq-overlay.seamhq-hidden {
+  display: none;
+}
+
+/* ============================================================
+   MINIMIZED STATE
+   ============================================================ */
+
+#seamhq-overlay.seamhq-minimized .seamhq-expanded {
+  display: none;
+}
+
+#seamhq-overlay:not(.seamhq-minimized) .seamhq-mini {
+  display: none;
+}
+
+.seamhq-mini-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #E8E6E3;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: none;
+}
+
+.seamhq-mini-btn:hover {
+  background: #E0DDD9;
+}
+
+.seamhq-mini-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1E40AF;
+}
+
+/* ============================================================
+   EXPANDED STATE
+   ============================================================ */
+
+.seamhq-expanded {
+  background: var(--seamhq-surface);
+  border: 1px solid var(--seamhq-border-subtle);
+  border-radius: 12px;
+  padding: 12px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  min-width: 320px;
+  max-width: 400px;
+  transition: all 0.2s ease;
+}
+
+#seamhq-overlay.seamhq-selecting .seamhq-expanded {
+  border-color: var(--seamhq-navy);
+  box-shadow: 0 2px 8px rgba(30, 41, 59, 0.15), 0 0 0 3px rgba(30, 41, 59, 0.1);
+}
+
+#seamhq-overlay.seamhq-captured .seamhq-expanded {
+  border-color: var(--seamhq-success);
+  box-shadow: 0 4px 24px rgba(16, 185, 129, 0.15), 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* ============================================================
+   OVERLAY HEADER
+   ============================================================ */
+
+.seamhq-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.seamhq-logo {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: #1E40AF;
+}
+
+.seamhq-close-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--seamhq-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.seamhq-close-btn:hover {
+  background: var(--seamhq-bg-secondary);
+  color: var(--seamhq-text-primary);
+}
+
+.seamhq-status {
+  font-size: 12px;
+  color: var(--seamhq-text-secondary);
+  margin-bottom: 10px;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.seamhq-actions,
+.seamhq-selecting-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.seamhq-btn {
+  flex: 1;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.seamhq-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.seamhq-btn-primary {
+  background: var(--seamhq-navy);
+  color: white;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.seamhq-btn-primary:hover:not(:disabled) {
+  background: var(--seamhq-navy-dark);
+}
+
+.seamhq-btn-secondary {
+  background: var(--seamhq-surface);
+  color: var(--seamhq-text-primary);
+  border: 1px solid var(--seamhq-border);
+  font-weight: 500;
+}
+
+.seamhq-btn-secondary:hover:not(:disabled) {
+  background: var(--seamhq-border-subtle);
+}
+
+/* ============================================================
+   INFO BAR
+   ============================================================ */
+
+.seamhq-info {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--seamhq-border-subtle);
+  font-size: 12px;
+  color: var(--seamhq-text-secondary);
+  text-align: center;
+}
+
+.seamhq-hidden {
+  display: none !important;
+}
+
+/* ============================================================
+   TOAST NOTIFICATIONS
+   ============================================================ */
+
+.seamhq-toast {
+  position: fixed;
+  bottom: 100px;
+  right: 24px;
+  z-index: 2147483647;
+  background: var(--seamhq-surface);
+  color: var(--seamhq-text-primary);
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--seamhq-border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.2s ease;
+}
+
+.seamhq-toast-show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.seamhq-toast-success {
+  border-left: 3px solid var(--seamhq-success);
+}
+
+.seamhq-toast-error {
+  border-left: 3px solid var(--seamhq-error);
+}
+
+.seamhq-toast-info {
+  border-left: 3px solid var(--seamhq-accent);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 768px) {
+  #seamhq-overlay {
+    bottom: 16px;
+    right: 16px;
+  }
+  
+  .seamhq-expanded {
+    padding: 12px 16px;
+    min-width: 180px;
+  }
+  
+  .seamhq-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
