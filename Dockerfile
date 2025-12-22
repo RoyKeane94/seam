@@ -26,10 +26,10 @@ COPY . /app/
 
 # Build Tailwind CSS (django-tailwind v4 standalone doesn't need npm)
 # This must run before collectstatic
-RUN python manage.py tailwind build || echo "Warning: Tailwind build failed, continuing..."
+RUN python manage.py tailwind build
 
 # Collect static files (includes the built Tailwind CSS)
-RUN python manage.py collectstatic --noinput || echo "Warning: collectstatic failed, continuing..."
+RUN python manage.py collectstatic --noinput
 
 # Expose port
 EXPOSE 8000

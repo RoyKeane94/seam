@@ -1,8 +1,5 @@
-# Railway uses Nixpacks for building
-# This file tells Railway how to build your app
-
 [phases.setup]
-nixPkgs = ["python312", "postgresql"]
+nixPkgs = ["python312"]
 
 [phases.install]
 cmds = [
