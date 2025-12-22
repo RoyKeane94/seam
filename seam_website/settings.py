@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +21,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-fzd=+%v_*v@d2+40gjgp!ovrh@oq_8m4gnc@4gu=ol@z2s&o1*'
+SECRET_KEY = config('SECRET_KEY')
+
+# Environment detection
+ENVIRONMENT = config('ENVIRONMENT', default='development')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG is False by default, but can be overridden in .env
+# For development, set DEBUG=True in .env
+DEBUG = config('DEBUG', default=(ENVIRONMENT == 'development'), cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
 
 
 # Application definition
@@ -75,12 +81,30 @@ WSGI_APPLICATION = 'seam_website.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Use production database if ENVIRONMENT is 'production' or DB_ENGINE is set
+# Otherwise use SQLite for development
+DB_ENGINE = config('DB_ENGINE', default='')
+
+if ENVIRONMENT == 'production' or DB_ENGINE:
+    # Production database configuration (PostgreSQL)
+    DATABASES = {
+        'default': {
+            'ENGINE': DB_ENGINE or 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME'),
+            'USER': config('DB_USER'),
+            'PASSWORD': config('DB_PASSWORD'),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
     }
-}
+else:
+    # Development database (SQLite)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
