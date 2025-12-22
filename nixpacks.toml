@@ -13,6 +13,7 @@ cmds = [
 [phases.build]
 cmds = [
   "python manage.py tailwind build",
+  "python manage.py migrate --noinput",
   "python manage.py collectstatic --noinput"
 ]
 
