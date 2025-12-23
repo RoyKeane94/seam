@@ -288,6 +288,16 @@ body::before {
   color: var(--text-secondary);
 }
 
+.capture-options {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.split-sentences-toggle {
+  margin: 0;
+}
+
 .capture-actions {
   display: flex;
   gap: 8px;

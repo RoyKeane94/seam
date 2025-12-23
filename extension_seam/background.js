@@ -10,12 +10,8 @@ const TWITTER_REQUEST_TOKEN_URL = 'https://api.twitter.com/oauth/request_token';
 const TWITTER_AUTHORIZE_URL = 'https://api.twitter.com/oauth/authorize';
 const TWITTER_ACCESS_TOKEN_URL = 'https://api.twitter.com/oauth/access_token';
 const TWITTER_API_URL = 'https://api.twitter.com/2';
-// Get redirect URL - Chrome adds trailing slash automatically
-let REDIRECT_URL = chrome.identity.getRedirectURL();
-// Ensure it ends with / (Twitter sometimes requires this)
-if (!REDIRECT_URL.endsWith('/')) {
-  REDIRECT_URL = REDIRECT_URL + '/';
-}
+// Callback URL for OAuth
+const REDIRECT_URL = 'https://kgicfinkacpijeeeekibfgjnkipboeje.chromiumapp.org/';
 
 console.log('SeamHQ: Redirect URL is:', REDIRECT_URL);
 
@@ -450,7 +446,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             success: true,
             capture: captureData.capture || null,
             thread: captureData.thread || [],
-            settings: captureData.settings || { numbering: false }
+            settings: captureData.settings || { numbering: false, splitSentences: false }
           });
           break;
 

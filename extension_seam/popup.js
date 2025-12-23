@@ -12,7 +12,7 @@
 
   let currentCapture = null;
   let currentThread = [];
-  let settings = { numbering: false };
+  let settings = { numbering: false, splitSentences: false };
   let twitterUser = null;
   let isPosting = false;
   let isConnecting = false;
@@ -39,6 +39,7 @@
     elements.tweetsContainer = document.getElementById('tweets-container');
     elements.tweetCount = document.getElementById('tweet-count');
     elements.numberingToggle = document.getElementById('numbering-toggle');
+    elements.splitSentencesToggle = document.getElementById('split-sentences-toggle');
     elements.postThreadBtn = document.getElementById('post-thread-btn');
     elements.postBtnText = document.getElementById('post-btn-text');
     elements.connectXBtn = document.getElementById('connect-x-btn');
@@ -70,6 +71,7 @@
     elements.regenerateBtn?.addEventListener('click', handleGenerate);
     elements.copyBtn?.addEventListener('click', handleCopyAll);
     elements.numberingToggle?.addEventListener('change', handleNumberingChange);
+    elements.splitSentencesToggle?.addEventListener('change', handleSplitSentencesChange);
     elements.activateSelectionBtn?.addEventListener('click', handleActivateSelection);
     elements.postThreadBtn?.addEventListener('click', handlePostThread);
     elements.settingsBtn?.addEventListener('click', () => toggleSettings(true));
@@ -112,9 +114,12 @@
         if (response?.success) {
           currentCapture = response.capture;
           currentThread = response.thread || [];
-          settings = response.settings || { numbering: false };
+          settings = response.settings || { numbering: false, splitSentences: false };
           if (elements.numberingToggle) {
             elements.numberingToggle.checked = settings.numbering;
+          }
+          if (elements.splitSentencesToggle) {
+            elements.splitSentencesToggle.checked = settings.splitSentences || false;
           }
         }
         resolve();
@@ -238,6 +243,11 @@
       temp.innerHTML = tweet;
       textContent = temp.textContent || temp.innerText || '';
     }
+    
+    // Apply split formatting if enabled (for display in textarea)
+    const displayText = applySplitFormatting(textContent);
+    
+    // Get text for character count (with numbering if enabled)
     const text = getTweetText(textContent, index);
     const over = text.length > 280;
     
@@ -265,7 +275,7 @@
           </button>
         </div>
       </div>
-      <textarea class="tweet-text" data-index="${index}" rows="4">${textContent}</textarea>
+      <textarea class="tweet-text" data-index="${index}" rows="4">${escapeHtml(displayText)}</textarea>
       <div class="tweet-footer">
         <span class="char-count ${over ? 'over-limit' : ''}">${text.length}/280</span>
         ${over ? '<button class="split-btn" data-action="split">Split</button>' : ''}
@@ -309,7 +319,32 @@
       // Clean up excessive newlines (max 2 consecutive)
       text = text.replace(/\n{3,}/g, '\n\n');
     }
+
+    // Apply paragraph formatting when split-sentences toggle is on
+    text = applySplitFormatting(text);
+
     return settings.numbering ? `${index + 1}/${currentThread.length} ${text}` : text;
+  }
+
+  function applySplitFormatting(text) {
+    if (!settings.splitSentences) return text;
+    if (!text) return text;
+
+    // If already has paragraph breaks, leave as-is
+    if (text.includes('\n\n')) return text;
+
+    // Match sentences ending with ., !, or ? (allowing trailing spaces)
+    const sentenceRegex = /[^.!?]+[.!?]+(?:\s+|$)/g;
+    const sentences = text.match(sentenceRegex);
+
+    if (!sentences || sentences.length <= 1) return text;
+
+    const formatted = sentences
+      .map(s => s.trim())
+      .filter(Boolean)
+      .join('\n\n');
+
+    return formatted || text;
   }
 
 
@@ -326,7 +361,9 @@
 
   function handleGenerate() {
     if (!currentCapture?.messages) return showToast('No text captured', 'error');
+    console.log('Seam: Generating thread with settings:', settings);
     currentThread = generateThread(currentCapture.messages);
+    console.log('Seam: Generated thread:', currentThread);
     saveThread();
     elements.threadEditor?.classList.remove('hidden');
     renderTweets();
@@ -362,6 +399,12 @@
     saveSettings();
     renderTweets();
     updatePostButton();
+  }
+
+  function handleSplitSentencesChange(e) {
+    settings.splitSentences = e.target.checked;
+    console.log('Seam: Split sentences toggle changed to:', settings.splitSentences);
+    saveSettings();
   }
 
   function handleEdit(e) {
@@ -811,8 +854,9 @@
     const maxLen = settings.numbering ? 260 : 275;
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
     const tweets = [];
-    let current = '';
     
+    // Always generate tweets based on length (single paragraph per tweet)
+    let current = '';
     for (const s of sentences) {
       if ((current + s).length <= maxLen) {
         current += s;
@@ -823,7 +867,59 @@
     }
     if (current.trim()) tweets.push(current.trim());
     
-    return tweets.length ? tweets.slice(0, 25) : [text.slice(0, 280)];
+    let result = tweets.length ? tweets.slice(0, 25) : [text.slice(0, 280)];
+    
+    // If splitSentences is enabled, reformat each tweet into paragraphs
+    console.log('Seam: splitSentences setting:', settings.splitSentences);
+    if (settings.splitSentences) {
+      result = result.map(tweet => {
+        console.log('Seam: Processing tweet for split:', tweet.substring(0, 50) + '...');
+        // If it already has line breaks, leave it as-is
+        if (tweet.includes('\n\n')) {
+          console.log('Seam: Tweet already has line breaks, skipping');
+          return tweet;
+        }
+        
+        // Match sentences ending with . ! or ? 
+        // Improved regex: matches text ending with sentence punctuation, handling quotes
+        const sentenceRegex = /([^.!?]*[.!?]+)\s*/g;
+        const sentences = [];
+        let match;
+        let lastIndex = 0;
+        
+        // Extract all sentences
+        while ((match = sentenceRegex.exec(tweet)) !== null) {
+          const sentence = match[1].trim();
+          if (sentence && sentence.length > 0) {
+            sentences.push(sentence);
+            lastIndex = match.index + match[0].length;
+          }
+        }
+        
+        // Handle any remaining text after the last sentence
+        if (lastIndex < tweet.length) {
+          const remaining = tweet.substring(lastIndex).trim();
+          if (remaining) {
+            sentences.push(remaining);
+          }
+        }
+        
+        console.log('Seam: Found sentences:', sentences.length, sentences);
+        
+        // If we found multiple sentences, join them with double newlines
+        if (sentences.length > 1) {
+          const formatted = sentences.join('\n\n');
+          console.log('Seam: Formatted tweet:', formatted.substring(0, 100) + '...');
+          return formatted;
+        }
+        
+        // If only one sentence or none found, return original
+        console.log('Seam: Only one sentence found, returning original');
+        return tweet;
+      });
+    }
+    
+    return result;
   }
 
   // ============================================================
