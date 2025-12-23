@@ -10,7 +10,12 @@ const TWITTER_REQUEST_TOKEN_URL = 'https://api.twitter.com/oauth/request_token';
 const TWITTER_AUTHORIZE_URL = 'https://api.twitter.com/oauth/authorize';
 const TWITTER_ACCESS_TOKEN_URL = 'https://api.twitter.com/oauth/access_token';
 const TWITTER_API_URL = 'https://api.twitter.com/2';
-const REDIRECT_URL = chrome.identity.getRedirectURL();
+// Get redirect URL - Chrome adds trailing slash automatically
+let REDIRECT_URL = chrome.identity.getRedirectURL();
+// Ensure it ends with / (Twitter sometimes requires this)
+if (!REDIRECT_URL.endsWith('/')) {
+  REDIRECT_URL = REDIRECT_URL + '/';
+}
 
 console.log('SeamHQ: Redirect URL is:', REDIRECT_URL);
 
@@ -118,6 +123,7 @@ async function makeOAuthRequest(method, url, params, consumerSecret, tokenSecret
 
 async function startOAuthFlow() {
   console.log('SeamHQ: Starting OAuth 1.0a flow...');
+  console.log('SeamHQ: Using callback URL:', REDIRECT_URL);
   
   // Step 1: Get request token
   const requestTokenResponse = await makeOAuthRequest(
@@ -488,24 +494,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'TWITTER_POST_THREAD':
           const postResults = await postThread(message.tweets);
           sendResponse({ success: true, results: postResults });
-          break;
-
-        case 'OPEN_POPUP':
-          // Open popup as a window (chrome.action.openPopup requires user gesture)
-          try {
-            const popupUrl = chrome.runtime.getURL('popup.html');
-            await chrome.windows.create({
-              url: popupUrl,
-              type: 'popup',
-              width: 420,
-              height: 650,
-              focused: true
-            });
-            sendResponse({ success: true });
-          } catch (error) {
-            console.error('SeamHQ: Failed to open popup window:', error);
-            sendResponse({ success: false, error: 'Could not open popup' });
-          }
           break;
 
         default:

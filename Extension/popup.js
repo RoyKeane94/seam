@@ -231,7 +231,14 @@
     div.className = 'tweet-card';
     div.dataset.index = index;
     
-    const text = getTweetText(tweet, index);
+    // Get text content for character count (strip HTML if present)
+    let textContent = tweet;
+    if (typeof tweet === 'string' && tweet.includes('<')) {
+      const temp = document.createElement('div');
+      temp.innerHTML = tweet;
+      textContent = temp.textContent || temp.innerText || '';
+    }
+    const text = getTweetText(textContent, index);
     const over = text.length > 280;
     
     div.innerHTML = `
@@ -258,28 +265,60 @@
           </button>
         </div>
       </div>
-      <textarea class="tweet-text" data-index="${index}">${escapeHtml(tweet)}</textarea>
+      <textarea class="tweet-text" data-index="${index}" rows="4">${textContent}</textarea>
       <div class="tweet-footer">
         <span class="char-count ${over ? 'over-limit' : ''}">${text.length}/280</span>
         ${over ? '<button class="split-btn" data-action="split">Split</button>' : ''}
       </div>
     `;
     
-    div.querySelector('.tweet-text')?.addEventListener('input', handleEdit);
+    const tweetTextEl = div.querySelector('.tweet-text');
+    if (tweetTextEl) {
+      tweetTextEl.addEventListener('input', handleEdit);
+    }
     div.querySelectorAll('[data-action]').forEach(btn => btn.addEventListener('click', handleAction));
     
     return div;
   }
 
   function getTweetText(tweet, index) {
-    return settings.numbering ? `${index + 1}/${currentThread.length} ${tweet}` : tweet;
+    // Extract plain text (remove any HTML if present, but preserve line breaks)
+    let text = tweet;
+    if (typeof tweet === 'string' && tweet.includes('<')) {
+      // Convert HTML to text while preserving line breaks
+      const temp = document.createElement('div');
+      temp.innerHTML = tweet;
+      
+      // Convert <br> to newlines before extracting text
+      temp.querySelectorAll('br').forEach(br => {
+        br.replaceWith(document.createTextNode('\n'));
+      });
+      
+      // Add newlines around block elements
+      temp.querySelectorAll('p, div').forEach(el => {
+        if (el.previousSibling) {
+          el.insertAdjacentText('beforebegin', '\n');
+        }
+        if (el.nextSibling) {
+          el.insertAdjacentText('afterend', '\n');
+        }
+      });
+      
+      text = temp.textContent || temp.innerText || '';
+      
+      // Clean up excessive newlines (max 2 consecutive)
+      text = text.replace(/\n{3,}/g, '\n\n');
+    }
+    return settings.numbering ? `${index + 1}/${currentThread.length} ${text}` : text;
   }
+
 
   function escapeHtml(text) {
     const d = document.createElement('div');
     d.textContent = text;
     return d.innerHTML;
   }
+
 
   // ============================================================
   // HANDLERS
@@ -303,10 +342,19 @@
     });
   }
 
-  function handleCopyAll() {
+  async function handleCopyAll() {
     if (!currentThread.length) return;
-    const text = currentThread.map((t, i) => getTweetText(t, i)).join('\n\n---\n\n');
-    navigator.clipboard.writeText(text);
+    // Get plain text from textareas
+    const textParts = currentThread.map((t, i) => {
+      const el = document.querySelector(`.tweet-text[data-index="${i}"]`);
+      if (el) {
+        return el.value || el.textContent || '';
+      }
+      return getTweetText(t, i);
+    });
+    const text = textParts.join('\n\n---\n\n');
+    await navigator.clipboard.writeText(text);
+    showToast('Copied to clipboard', 'success');
   }
 
   function handleNumberingChange(e) {
@@ -318,16 +366,19 @@
 
   function handleEdit(e) {
     const i = parseInt(e.target.dataset.index);
-    currentThread[i] = e.target.value;
+    // Store plain text
+    currentThread[i] = e.target.value || '';
     saveThread();
     
     const footer = e.target.parentElement.querySelector('.tweet-footer');
-    const len = getTweetText(e.target.value, i).length;
+    const text = e.target.value || '';
+    const len = getTweetText(text, i).length;
     const over = len > 280;
     footer.innerHTML = `<span class="char-count ${over ? 'over-limit' : ''}">${len}/280</span>${over ? '<button class="split-btn" data-action="split">Split</button>' : ''}`;
     footer.querySelector('.split-btn')?.addEventListener('click', () => splitTweet(i));
     updatePostButton();
   }
+
 
   function handleAction(e) {
     const action = e.currentTarget.dataset.action;
@@ -335,7 +386,10 @@
     const i = parseInt(card.dataset.index);
     
     if (action === 'copy') {
-      navigator.clipboard.writeText(getTweetText(currentThread[i], i));
+      const tweetEl = document.querySelector(`.tweet-text[data-index="${i}"]`);
+      const text = tweetEl ? (tweetEl.value || tweetEl.textContent || '') : getTweetText(currentThread[i], i);
+      navigator.clipboard.writeText(text);
+      showToast('Copied to clipboard', 'success');
     } else if (action === 'up' && i > 0) {
       [currentThread[i], currentThread[i - 1]] = [currentThread[i - 1], currentThread[i]];
       saveThread(); renderTweets();
@@ -441,19 +495,20 @@
   function insertMention(username) {
     if (currentMentionTweetIndex === null) return;
     
-    const textarea = document.querySelector(`.tweet-text[data-index="${currentMentionTweetIndex}"]`);
-    if (textarea) {
-      const cursorPos = textarea.selectionStart;
-      const text = textarea.value;
-      const before = text.substring(0, cursorPos);
-      const after = text.substring(cursorPos);
+    const tweetEl = document.querySelector(`.tweet-text[data-index="${currentMentionTweetIndex}"]`);
+    if (tweetEl && tweetEl.tagName === 'TEXTAREA') {
       const mention = `@${username} `;
-      textarea.value = before + mention + after;
-      textarea.focus();
-      textarea.setSelectionRange(cursorPos + mention.length, cursorPos + mention.length);
+      const start = tweetEl.selectionStart;
+      const end = tweetEl.selectionEnd;
+      const value = tweetEl.value;
+      
+      // Insert mention at cursor position
+      tweetEl.value = value.substring(0, start) + mention + value.substring(end);
+      tweetEl.selectionStart = tweetEl.selectionEnd = start + mention.length;
+      tweetEl.focus();
       
       // Trigger input event to update character count
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      tweetEl.dispatchEvent(new Event('input', { bubbles: true }));
     }
     
     closeMentionDropdown();
@@ -574,53 +629,136 @@
   // ============================================================
 
   function splitTweet(i) {
-    const parts = smartSplit(currentThread[i]);
-    if (parts.length === 1) return showToast('Cannot split further', 'error');
+    // Get text content from textarea
+    const tweetEl = document.querySelector(`.tweet-text[data-index="${i}"]`);
+    const text = tweetEl ? (tweetEl.value || '') : (currentThread[i] || '');
+    
+    if (!text || text.trim().length === 0) {
+      showToast('No text to split', 'error');
+      return;
+    }
+    
+    const parts = smartSplit(text);
+    
+    // If smartSplit couldn't split it further, try a simple split at the midpoint
+    if (parts.length === 1) {
+      const maxLen = settings.numbering ? 260 : 275;
+      if (text.length <= maxLen) {
+        showToast('Text is already short enough', 'error');
+        return;
+      }
+      
+      // Try to find a good split point (prefer newlines, then spaces)
+      const midpoint = Math.floor(text.length / 2);
+      let splitPoint = midpoint;
+      
+      // Look for a newline near the midpoint
+      const newlineBefore = text.lastIndexOf('\n', midpoint);
+      const newlineAfter = text.indexOf('\n', midpoint);
+      
+      if (newlineBefore > midpoint * 0.7) {
+        splitPoint = newlineBefore + 1;
+      } else if (newlineAfter > 0 && newlineAfter < midpoint * 1.3) {
+        splitPoint = newlineAfter + 1;
+      } else {
+        // Look for a space near the midpoint
+        const spaceBefore = text.lastIndexOf(' ', midpoint);
+        const spaceAfter = text.indexOf(' ', midpoint);
+        
+        if (spaceBefore > midpoint * 0.7) {
+          splitPoint = spaceBefore + 1;
+        } else if (spaceAfter > 0 && spaceAfter < midpoint * 1.3) {
+          splitPoint = spaceAfter + 1;
+        }
+      }
+      
+      parts[0] = text.slice(0, splitPoint).trim();
+      parts.push(text.slice(splitPoint).trim());
+    }
+    
+    if (parts.length === 1) {
+      showToast('Cannot split further', 'error');
+      return;
+    }
+    
+    // Replace the single tweet with the split parts
     currentThread.splice(i, 1, ...parts);
-    saveThread(); renderTweets(); updatePostButton();
+    saveThread(); 
+    renderTweets(); 
+    updatePostButton();
   }
 
   function smartSplit(text) {
     // Account for numbering space
     const maxLen = settings.numbering ? 260 : 275;
     
+    // Extract text content if HTML
+    if (typeof text === 'string' && text.includes('<')) {
+      const temp = document.createElement('div');
+      temp.innerHTML = text;
+      text = temp.textContent || temp.innerText || '';
+    }
+    
+    if (!text || text.trim().length === 0) return [text];
     if (text.length <= maxLen) return [text];
     
-    const sentences = text.match(/[^.!?]+[.!?]+\s*/g) || [text];
+    // Default: Split at midpoint (aim for 2 parts)
+    // Only split into more parts if one part would still exceed maxLen
+    function findBestSplitPoint(text, targetPoint) {
+      // Prefer newlines near the target point
+      const newlineBefore = text.lastIndexOf('\n', targetPoint);
+      const newlineAfter = text.indexOf('\n', targetPoint);
+      
+      // Use newline if it's reasonably close (within 30% of target)
+      if (newlineBefore > targetPoint * 0.7) {
+        return newlineBefore + 1;
+      }
+      if (newlineAfter > 0 && newlineAfter < targetPoint * 1.3) {
+        return newlineAfter + 1;
+      }
+      
+      // Fall back to spaces
+      const spaceBefore = text.lastIndexOf(' ', targetPoint);
+      const spaceAfter = text.indexOf(' ', targetPoint);
+      
+      if (spaceBefore > targetPoint * 0.7) {
+        return spaceBefore + 1;
+      }
+      if (spaceAfter > 0 && spaceAfter < targetPoint * 1.3) {
+        return spaceAfter + 1;
+      }
+      
+      // Last resort: split at target point (may split mid-word)
+      return targetPoint;
+    }
+    
+    // Try to split into 2 parts first
+    const midpoint = Math.floor(text.length / 2);
+    let splitPoint = findBestSplitPoint(text, midpoint);
+    
+    const part1 = text.slice(0, splitPoint).trim();
+    const part2 = text.slice(splitPoint).trim();
+    
+    // If both parts fit, we're done
+    if (part1.length <= maxLen && part2.length <= maxLen) {
+      return [part1, part2];
+    }
+    
+    // If one part is still too long, recursively split it
     const result = [];
-    let current = '';
-    
-    for (const s of sentences) {
-      if ((current + s).trim().length <= maxLen) {
-        current += s;
-      } else {
-        if (current.trim()) result.push(current.trim());
-        current = s;
-      }
-    }
-    if (current.trim()) result.push(current.trim());
-    
-    // Handle sentences still too long
-    const final = [];
-    for (const t of result) {
-      if (t.length > maxLen) {
-        const words = t.split(/\s+/);
-        let chunk = '';
-        for (const w of words) {
-          if ((chunk + ' ' + w).trim().length <= maxLen) {
-            chunk = (chunk + ' ' + w).trim();
-          } else {
-            if (chunk) final.push(chunk);
-            chunk = w;
-          }
-        }
-        if (chunk) final.push(chunk);
-      } else {
-        final.push(t);
-      }
+    if (part1.length > maxLen) {
+      result.push(...smartSplit(part1));
+    } else {
+      result.push(part1);
     }
     
-    return final.length ? final : [text.slice(0, maxLen), text.slice(maxLen)];
+    if (part2.length > maxLen) {
+      result.push(...smartSplit(part2));
+    } else {
+      result.push(part2);
+    }
+    
+    return result;
   }
 
   function saveThread() { 
@@ -704,8 +842,8 @@
       const url = tab.url || '';
       
       // Check if we're on a supported page
-      if (!url.includes('chatgpt.com') && !url.includes('chat.openai.com')) {
-        showToast('Please open a ChatGPT or AI conversation page first', 'error');
+      if (!url.includes('chatgpt.com') && !url.includes('chat.openai.com') && !url.includes('gemini.google.com') && !url.includes('bard.google.com')) {
+        showToast('Please open a ChatGPT, Gemini, or AI conversation page first', 'error');
         return;
       }
       

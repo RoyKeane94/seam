@@ -56,7 +56,7 @@
   </style>
 </head>
 <body>
-  <h1>SeamHQ Icon Generator</h1>
+  <h1>Seam Icon Generator</h1>
   
   <div class="instructions">
     <p><strong>Instructions:</strong></p>
@@ -87,21 +87,16 @@
       canvas.height = size;
       const ctx = canvas.getContext('2d');
       
-      // Background gradient
-      const gradient = ctx.createLinearGradient(0, 0, size, size);
-      gradient.addColorStop(0, '#6366f1');
-      gradient.addColorStop(1, '#8b5cf6');
-      
-      // Rounded rectangle background
+      // White background
       const radius = size * 0.2;
       ctx.beginPath();
       ctx.roundRect(0, 0, size, size, radius);
-      ctx.fillStyle = gradient;
+      ctx.fillStyle = '#FFFFFF';
       ctx.fill();
       
-      // Draw "S" letter
-      ctx.fillStyle = 'white';
-      ctx.font = `bold ${size * 0.6}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      // Draw "S" letter in navy blue
+      ctx.fillStyle = '#1E40AF';
+      ctx.font = `bold ${size * 0.65}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('S', size / 2, size / 2 + size * 0.05);

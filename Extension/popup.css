@@ -238,7 +238,12 @@ body::before {
 .empty-desc {
   font-size: 13px;
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: 1.8;
+  text-align: left;
+}
+
+.empty-desc p {
+  margin: 8px 0;
 }
 
 /* Capture Card */
@@ -516,6 +521,7 @@ body::before {
 .mention-header {
   padding: 8px;
   border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
 }
 
 .mention-header input {
@@ -578,10 +584,14 @@ body::before {
   font-family: inherit;
   color: var(--text);
   overflow: visible;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 .tweet-text:focus {
-  outline: none;
+  outline: 2px solid var(--navy);
+  outline-offset: -2px;
+  border-radius: 4px;
 }
 
 .tweet-footer {

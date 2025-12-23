@@ -30,7 +30,40 @@
     if (!selection || selection.rangeCount === 0) {
       return '';
     }
-    return selection.toString().trim();
+    
+    // Get the range to preserve line breaks from block elements
+    const range = selection.getRangeAt(0);
+    const container = document.createElement('div');
+    
+    // Clone the selected content
+    container.appendChild(range.cloneContents());
+    
+    // Convert block elements to line breaks to preserve structure
+    // Replace block-level elements with newlines
+    const blockElements = container.querySelectorAll('p, div, br, h1, h2, h3, h4, h5, h6, li');
+    blockElements.forEach(el => {
+      if (el.tagName === 'BR') {
+        // Replace <br> with newline
+        el.replaceWith(document.createTextNode('\n'));
+      } else {
+        // Add newline before block elements (except first)
+        if (el.previousSibling) {
+          el.insertAdjacentText('beforebegin', '\n');
+        }
+        // Add newline after block elements (except last)
+        if (el.nextSibling) {
+          el.insertAdjacentText('afterend', '\n');
+        }
+      }
+    });
+    
+    // Get plain text (preserves newlines we added)
+    let text = container.textContent || container.innerText || '';
+    
+    // Clean up: reduce multiple consecutive newlines (max 2)
+    text = text.replace(/\n{3,}/g, '\n\n');
+    
+    return text;
   }
 
   function cleanText(text) {
@@ -237,6 +270,7 @@
   function captureText(text) {
     disableSelectionMode();
     
+    // Clean plain text (no HTML formatting)
     capturedText = cleanText(text);
     capturedMessages = [{
       role: 'assistant',
@@ -264,10 +298,6 @@
       
       if (response && response.success) {
         window.getSelection()?.removeAllRanges();
-        // Open extension popup after text is captured
-        chrome.runtime.sendMessage({
-          type: 'OPEN_POPUP'
-        });
       } else {
       }
     });
