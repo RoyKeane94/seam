@@ -1,10 +1,18 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.urls import reverse
+from django.utils import timezone
 from .forms import WaitlistForm
+from .models import PageVisit
 
 def landing_page(request):
     """Landing page view with waitlist signup"""
+    # Track visit
+    today = timezone.now().date()
+    visit, created = PageVisit.objects.get_or_create(visit_date=today)
+    visit.visit_count += 1
+    visit.save()
+    
     if request.method == 'POST':
         form = WaitlistForm(request.POST)
         if form.is_valid():

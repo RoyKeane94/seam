@@ -1,5 +1,13 @@
 from django.contrib import admin
-from .models import Waitlist
+from .models import Waitlist, PageVisit
+
+@admin.register(PageVisit)
+class PageVisitAdmin(admin.ModelAdmin):
+    list_display = ('visit_date', 'visit_count', 'last_visit')
+    list_filter = ('visit_date',)
+    readonly_fields = ('visit_date', 'visit_count', 'last_visit')
+    ordering = ('-visit_date',)
+    date_hierarchy = 'visit_date'
 
 @admin.register(Waitlist)
 class WaitlistAdmin(admin.ModelAdmin):

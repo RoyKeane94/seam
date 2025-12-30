@@ -1,5 +1,29 @@
 from django.db import models
 from django.core.validators import EmailValidator
+from django.utils import timezone
+
+class PageVisit(models.Model):
+    """Track visits to the landing page"""
+    visit_date = models.DateField(
+        unique=True,
+        help_text="Date of the visit"
+    )
+    visit_count = models.IntegerField(
+        default=0,
+        help_text="Number of visits on this date"
+    )
+    last_visit = models.DateTimeField(
+        auto_now=True,
+        help_text="Last time a visit was recorded"
+    )
+    
+    class Meta:
+        ordering = ['-visit_date']
+        verbose_name = 'Page Visit'
+        verbose_name_plural = 'Page Visits'
+    
+    def __str__(self):
+        return f"{self.visit_date} - {self.visit_count} visits"
 
 class Waitlist(models.Model):
     email = models.EmailField(
