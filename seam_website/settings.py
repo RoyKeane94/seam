@@ -34,6 +34,20 @@ DEBUG = config('DEBUG', default=(ENVIRONMENT == 'development'), cast=bool)
 
 ALLOWED_HOSTS = ['seamhq.co.uk','www.seamhq.co.uk', 'localhost', '127.0.0.1']
 
+# CSRF settings
+CSRF_TRUSTED_ORIGINS = [
+    'https://seamhq.co.uk',
+    'https://www.seamhq.co.uk',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+
+# Cookie settings for production
+if ENVIRONMENT == 'production':
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_HTTPONLY = True
 
 # Application definition
 
