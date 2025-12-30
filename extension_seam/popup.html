@@ -77,21 +77,31 @@
 
     <!-- No Capture State -->
     <section id="no-capture" class="section empty-state">
-      <div class="empty-icon">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-        </svg>
+      <h2 class="empty-title" style="color: var(--navy); font-weight: 700; margin-bottom: 24px;">How Seam works</h2>
+      <div class="how-seam-works">
+        <div class="work-step">
+          <h3 class="work-step-title"><span class="work-step-number">1.</span> You and your LLM think together</h3>
+          <p class="work-step-desc">Have a real conversation. When it's done, ask for a numbered X thread.</p>
+        </div>
+        <div class="work-step">
+          <h3 class="work-step-title"><span class="work-step-number">2.</span> Refine it in the chat</h3>
+          <p class="work-step-desc">Re-prompt, challenge it, rewrite parts. This is still thinking, not posting.</p>
+        </div>
+        <div class="work-step">
+          <h3 class="work-step-title"><span class="work-step-number">3.</span> Select what's worth sharing</h3>
+          <p class="work-step-desc">Highlight only the lines you'd stand behind publicly.</p>
+        </div>
+        <div class="work-step">
+          <h3 class="work-step-title"><span class="work-step-number">4.</span> Edit and format in Seam</h3>
+          <p class="work-step-desc">Light edits, clean breaks, correct numbering — nothing more.</p>
+        </div>
+        <div class="work-step">
+          <h3 class="work-step-title"><span class="work-step-number">5.</span> Publish deliberately</h3>
+          <p class="work-step-desc">No scheduling. No auto-posting. Ship when it feels right.</p>
+        </div>
+        <p class="work-tagline">You think with your LLM. <span class="tagline-navy">Seam publishes.</span></p>
       </div>
-      <h2 class="empty-title" style="color: var(--navy); font-weight: 700;">How to use Seam</h2>
-      <div class="empty-desc">
-        <p><strong>1.</strong> Ask your LLM to summarise your conversation as a numbered X thread</p>
-        <p><strong>2.</strong> Re-prompt until it's right</p>
-        <p><strong>3.</strong> Select the text</p>
-        <p><strong>4.</strong> Edit and format in Seam</p>
-        <p><strong>5.</strong> Post to X</p>
-        <p style="margin-top: 16px;"><strong style="color: var(--text);">Your LLM writes.</strong> <strong style="color: var(--navy);">Seam ships.</strong></p>
-      </div>
-      <button class="btn btn-primary" id="activate-selection-btn" style="margin-top: 16px;">
+      <button class="btn btn-primary" id="activate-selection-btn" style="margin-top: 24px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
