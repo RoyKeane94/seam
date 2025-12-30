@@ -82,8 +82,12 @@ body::before {
   font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.3px;
-  color: var(--navy);
+  color: white;
+  background: var(--navy);
+  padding: 4px 12px;
+  border-radius: 4px;
   font-family: inherit;
+  display: inline-block;
 }
 
 .version {

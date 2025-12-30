@@ -2,177 +2,357 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seam - Generate X threads from your AI conversations</title>
-    {% tailwind_css %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seam - Share what you find interesting</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
+  {% tailwind_css %}
 </head>
+
 <body class="bg-seam-bg text-seam-text font-sans">
-    <!-- Header -->
-    <header class="bg-seam-surface border-b border-seam-border">
-        <div class="max-w-7xl mx-auto px-6 py-6">
-            <div class="flex justify-between items-center">
-                <div class="text-2xl font-semibold text-seam-navy tracking-tight">Seam</div>
+  <!-- Header -->
+  <header class="bg-seam-surface border-b border-seam-border">
+    <div class="max-w-7xl mx-auto px-6 py-6">
+      <div class="flex justify-between items-center">
+        <div class="px-3 py-1.5 bg-seam-navy text-white text-2xl font-semibold tracking-tight rounded">Seam</div>
+
+        <!-- Primary CTA always visible -->
+        <a href="#waitlist"
+           class="hidden sm:inline-flex items-center justify-center px-4 py-2 bg-seam-navy text-white rounded-lg font-semibold hover:bg-seam-navy-dark transition-colors cursor-pointer">
+          Join waitlist
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="py-16 md:py-20">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <!-- Left -->
+          <div class="text-center lg:text-left">
+            <!-- Small clarity line -->
+            <p class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-seam-border bg-seam-surface text-sm text-seam-text-secondary mb-6">
+              Chrome extension • Highlight → Edit → Post
+            </p>
+
+            <h1 class="text-5xl md:text-6xl font-bold text-seam-navy mb-5 leading-tight tracking-tight">
+              Share what you find interesting
+            </h1>
+
+            <p class="text-2xl md:text-3xl text-seam-text mb-6 font-medium leading-relaxed">
+              Turn your best AI conversations into clean X threads - ready to post.
+            </p>
+
+            <!-- New text -->
+            <p class="text-lg text-seam-text-secondary mb-2 leading-relaxed max-w-xl mx-auto lg:mx-0">
+              Built for people who think with AI and share occasionally.
+            </p>
+            <p class="text-base text-seam-text-secondary mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0 font-medium">
+              Clean threads. Light edits. No content machine.
+            </p>
+
+            <!-- Primary CTA + (optional) secondary trust line -->
+            <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start items-stretch sm:items-center mb-3">
+              <a href="#waitlist"
+                 class="inline-flex items-center justify-center px-6 py-3.5 bg-seam-navy text-white rounded-lg font-semibold hover:bg-seam-navy-dark transition-colors text-base cursor-pointer">
+                Join the waitlist
+              </a>
+              <p class="text-sm text-seam-text-secondary sm:ml-2">
+                Early access. No spam.
+              </p>
             </div>
+
+            <p class="text-base font-semibold text-seam-text mt-4">
+              You think with your LLM. <span class="text-seam-navy">Seam publishes.</span>
+            </p>
+          </div>
+
+          <!-- Right: Video -->
+          <div class="flex flex-col items-center justify-center lg:col-span-1 w-full">
+            <div class="w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl aspect-video rounded-xl overflow-hidden bg-seam-surface border border-seam-border shadow-xl">
+              <video class="w-full h-full object-cover" autoplay muted loop playsinline>
+                <source src="{% static 'video/Seam Homepage Video.mp4' %}" type="video/mp4">
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            <!-- Caption below video -->
+            <p class="mt-4 text-xs text-seam-text-secondary text-center max-w-5xl lg:max-w-6xl xl:max-w-7xl">
+              Watch for: select text → quick edits → clean numbering → ready to post.
+            </p>
+          </div>
         </div>
-    </header>
-    
-    <main>
-        <!-- Section 1 - Hook -->
-        <section class="py-20">
-            <div class="max-w-7xl mx-auto px-6">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                    <!-- Left: Text Content -->
-                    <div class="text-center lg:text-left">
-                        <h1 class="text-5xl md:text-6xl font-bold text-seam-navy mb-6 leading-tight tracking-tight">
-                            Don't keep your best AI conversations to yourself.
-                        </h1>
-                        <p class="text-2xl md:text-3xl text-black mb-8 font-medium">
-                            Turn your most interesting AI conversations into threads worth sharing with people who'll genuinely care.
-                        </p>
-                        <p class="text-lg text-seam-text-secondary mb-6 leading-relaxed">
-                            You already use ChatGPT to think, research, and refine ideas. Seam turns your final draft into a proper X thread — clean breaks, correct numbering, ready to post.
-                        </p>
-                        <p class="text-base text-seam-text-secondary mb-12 italic">
-                            No auto-posting. No "rewrite my voice". No spam modes.
-                        </p>
-                        
-                        <!-- Messages -->
-                        {% if messages %}
-                        <div class="max-w-md mx-auto lg:mx-0 mb-6">
-                            {% for message in messages %}
-                            <div class="p-3 rounded-lg mb-3 {% if message.tags == 'success' %}bg-green-50 text-seam-success border border-green-200{% else %}bg-red-50 text-seam-error border border-red-200{% endif %}">
-                                {{ message }}
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                        
-                        <!-- Waitlist Form -->
-                        <div class="max-w-md mx-auto lg:mx-0">
-                            <h2 class="text-xl font-semibold text-seam-text mb-6">Join the waitlist</h2>
-                            <form method="post">
-                                {% csrf_token %}
-                                <div class="flex flex-col sm:flex-row gap-3 mb-4">
-                                    <input 
-                                        type="email" 
-                                        name="email" 
-                                        id="id_email"
-                                        placeholder="Enter your email"
-                                        required
-                                        class="flex-1 px-4 py-3.5 border border-seam-border rounded-lg bg-seam-surface text-seam-text placeholder-seam-text-secondary focus:outline-none focus:border-seam-navy transition-colors text-base"
-                                    >
-                                    <button 
-                                        type="submit" 
-                                        class="px-8 py-3.5 bg-seam-navy text-white rounded-lg font-semibold hover:bg-seam-navy-dark transition-colors text-base whitespace-nowrap"
-                                    >
-                                        Join
-                                    </button>
-                                </div>
-                                <div class="mb-4">
-                                    <p class="block text-sm font-medium text-seam-text mb-2.5 text-left">
-                                        What do you mostly share?
-                                    </p>
-                                    {% with current=form.what_mostly_share.value %}
-                                    <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2">
-                                        <label class="inline-flex items-center justify-center px-3.5 py-2.5 rounded-full border text-sm cursor-pointer transition-all
-                                                       bg-seam-surface border-seam-border text-seam-text hover:border-seam-navy/60 hover:bg-white
-                                                       {% if current == 'ideas' %}!bg-seam-navy !text-white !border-seam-navy shadow-sm{% endif %}">
-                                            <input type="radio" name="what_mostly_share" value="ideas" class="sr-only" {% if current == 'ideas' %}checked{% endif %}>
-                                            Ideas
-                                        </label>
-                                        <label class="inline-flex items-center justify-center px-3.5 py-2.5 rounded-full border text-sm cursor-pointer transition-all
-                                                       bg-seam-surface border-seam-border text-seam-text hover:border-seam-navy/60 hover:bg-white
-                                                       {% if current == 'research' %}!bg-seam-navy !text-white !border-seam-navy shadow-sm{% endif %}">
-                                            <input type="radio" name="what_mostly_share" value="research" class="sr-only" {% if current == 'research' %}checked{% endif %}>
-                                            Research
-                                        </label>
-                                        <label class="inline-flex items-center justify-center px-3.5 py-2.5 rounded-full border text-sm cursor-pointer transition-all
-                                                       bg-seam-surface border-seam-border text-seam-text hover:border-seam-navy/60 hover:bg-white
-                                                       {% if current == 'summaries' %}!bg-seam-navy !text-white !border-seam-navy shadow-sm{% endif %}">
-                                            <input type="radio" name="what_mostly_share" value="summaries" class="sr-only" {% if current == 'summaries' %}checked{% endif %}>
-                                            Summaries
-                                        </label>
-                                        <label class="inline-flex items-center justify-center px-3.5 py-2.5 rounded-full border text-sm cursor-pointer transition-all
-                                                       bg-seam-surface border-seam-border text-seam-text hover:border-seam-navy/60 hover:bg-white
-                                                       {% if current == 'notes' %}!bg-seam-navy !text-white !border-seam-navy shadow-sm{% endif %}">
-                                            <input type="radio" name="what_mostly_share" value="notes" class="sr-only" {% if current == 'notes' %}checked{% endif %}>
-                                            Notes
-                                        </label>
-                                    </div>
-                                    {% endwith %}
-                                </div>
-                                {% if form.email.errors %}
-                                <div class="text-seam-error text-sm mt-2">
-                                    {{ form.email.errors.0 }}
-                                </div>
-                                {% endif %}
-                                {% if form.what_mostly_share.errors %}
-                                <div class="text-seam-error text-sm mt-2">
-                                    {{ form.what_mostly_share.errors.0 }}
-                                </div>
-                                {% endif %}
-                            </form>
-                        </div>
-                    </div>
-                    
-                    <!-- Right: Video Placeholder -->
-                    <div class="flex items-center justify-center">
-                        <div class="w-full max-w-lg aspect-video bg-seam-surface border-2 border-dashed border-seam-border rounded-xl flex items-center justify-center">
-                            <div class="text-center p-8">
-                                <svg class="w-16 h-16 mx-auto mb-4 text-seam-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                </svg>
-                                <p class="text-seam-text-secondary font-medium">Video placeholder</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        
-        <!-- Section 2 - Explain -->
-        <section class="py-20 bg-seam-surface">
-            <div class="max-w-4xl mx-auto px-6">
-                <p class="text-2xl md:text-3xl text-seam-text mb-12 max-w-3xl mx-auto text-center leading-relaxed">
-                    Lots of people are having genuinely useful conversations with AI — and never sharing them. Seam makes it effortless to share the best bits, without looking like a bot.
-                </p>
-                
-                <div class="space-y-8 mb-12">
-                    <div class="flex items-start gap-4">
-                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-seam-navy text-white flex items-center justify-center font-semibold text-lg">1</div>
-                        <div>
-                            <h3 class="text-xl font-semibold text-seam-text mb-2">Have the conversation (and tweak it)</h3>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start gap-4">
-                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-seam-navy text-white flex items-center justify-center font-semibold text-lg">2</div>
-                        <div>
-                            <h3 class="text-xl font-semibold text-seam-text mb-2">Highlight the best bits</h3>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start gap-4">
-                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-seam-navy text-white flex items-center justify-center font-semibold text-lg">3</div>
-                        <div>
-                            <h3 class="text-xl font-semibold text-seam-text mb-2">Seam turns it into a clean X thread</h3>
-                        </div>
-                    </div>
-                </div>
-                
-                <p class="text-lg text-seam-text-secondary text-center max-w-2xl mx-auto leading-relaxed">
-                    In a world of schedulers "optimising for your audience", Seam is simpler: share what you found interesting, with the people you actually like talking to on X.
-                </p>
-            </div>
-        </section>
-    </main>
-    
-    <!-- Footer -->
-    <footer class="py-12 text-center border-t border-seam-border text-seam-text-secondary">
-        <div class="max-w-7xl mx-auto px-6">
-            <p>&copy; 2024 Seam. All rights reserved.</p>
+      </div>
+    </section>
+
+    <!-- WHY / BENEFITS (short, not essay) -->
+    <section class="py-14 md:py-16 bg-seam-surface">
+      <div class="max-w-5xl mx-auto px-6">
+        <div class="text-center mb-10">
+          <h2 class="text-3xl md:text-4xl font-bold text-seam-navy tracking-tight">
+            A last-mile tool for publishing
+          </h2>
+          <p class="text-lg text-seam-text-secondary mt-3 max-w-3xl mx-auto leading-relaxed">
+            Most AI tools help people produce more content. Seam helps people share better.
+          </p>
         </div>
-    </footer>
+
+        <!-- Convert-y: three crisp benefit cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-white border border-seam-border rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-seam-text mb-2">Clean threads, fast</h3>
+            <p class="text-seam-text-secondary leading-relaxed">
+              Correct numbering, clean breaks, readable structure — without fiddling.
+            </p>
+          </div>
+          <div class="bg-white border border-seam-border rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-seam-text mb-2">Light edits in one place</h3>
+            <p class="text-seam-text-secondary leading-relaxed">
+              Tighten wording, remove fluff, and keep your voice intact.
+            </p>
+          </div>
+          <div class="bg-white border border-seam-border rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-seam-text mb-2">Deliberate by design</h3>
+            <p class="text-seam-text-secondary leading-relaxed">
+              No auto-posting, no scheduling — you publish when it’s worth it.
+            </p>
+          </div>
+        </div>
+
+        <!-- Secondary CTA -->
+        <div class="text-center mt-10">
+          <a href="#waitlist"
+             class="inline-flex items-center justify-center px-6 py-3 bg-seam-navy text-white rounded-lg font-semibold hover:bg-seam-navy-dark transition-colors cursor-pointer">
+            Join the waitlist
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS (collapse to 3 steps) -->
+    <section class="py-16">
+      <div class="max-w-4xl mx-auto px-6">
+        <h2 class="text-3xl md:text-4xl font-bold text-seam-text mb-10 text-center tracking-tight">
+          How Seam works
+        </h2>
+
+        <div class="space-y-7 mb-10">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-seam-navy text-white flex items-center justify-center font-semibold text-lg">1</div>
+            <div>
+              <h3 class="text-xl font-semibold text-seam-text mb-1">Think with your LLM</h3>
+              <p class="text-seam-text-secondary leading-relaxed">
+                Have the conversation, then ask for a numbered thread.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-seam-navy text-white flex items-center justify-center font-semibold text-lg">2</div>
+            <div>
+              <h3 class="text-xl font-semibold text-seam-text mb-1">Select what’s worth sharing</h3>
+              <p class="text-seam-text-secondary leading-relaxed">
+                Highlight only what you’d stand behind publicly.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-seam-navy text-white flex items-center justify-center font-semibold text-lg">3</div>
+            <div>
+              <h3 class="text-xl font-semibold text-seam-text mb-1">Edit & publish in Seam</h3>
+              <p class="text-seam-text-secondary leading-relaxed">
+                Light edits, clean formatting, correct numbering — then post.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tiny reinforcement of the contract -->
+        <p class="text-center text-seam-text-secondary leading-relaxed max-w-2xl mx-auto mb-12">
+          Seam is for sharing what you find interesting - not for optimising every post to game the algorithm.
+        </p>
+
+        <!-- Contrast box - moved here and enhanced -->
+        <div class="bg-gradient-to-br from-seam-surface to-white border-2 border-seam-border rounded-2xl p-8 md:p-10 shadow-lg max-w-3xl mx-auto">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+            <div class="space-y-3">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-2 h-2 rounded-full bg-seam-navy"></div>
+                <p class="text-base font-bold text-seam-text">For</p>
+              </div>
+              <ul class="space-y-2.5 text-sm text-seam-text-secondary leading-relaxed">
+                <li class="flex items-center gap-2">
+                  <span class="text-seam-navy">•</span>
+                  <span>People who think with AI</span>
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="text-seam-navy">•</span>
+                  <span>Occasional sharers</span>
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="text-seam-navy">•</span>
+                  <span>Clarity & taste</span>
+                </li>
+              </ul>
+            </div>
+            <div class="space-y-3">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-2 h-2 rounded-full bg-seam-text-secondary"></div>
+                <p class="text-base font-bold text-seam-text">Not for</p>
+              </div>
+              <ul class="space-y-2.5 text-sm text-seam-text-secondary leading-relaxed">
+                <li class="flex items-center gap-2">
+                  <span class="text-seam-text-secondary">•</span>
+                  <span>Algorithm gaming</span>
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="text-seam-text-secondary">•</span>
+                  <span>Posting schedules</span>
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="text-seam-text-secondary">•</span>
+                  <span>"Viral" templates</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="mt-6 pt-6 border-t border-seam-border">
+            <p class="text-sm text-seam-text-secondary italic text-center">
+              No auto-posting. No "rewrite my voice". No engagement tricks.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WAITLIST (single form, one job) -->
+    <section id="waitlist" class="py-16 bg-seam-surface">
+      <div class="max-w-2xl mx-auto px-6">
+        <h2 class="text-3xl md:text-4xl font-bold text-seam-text mb-4 text-center tracking-tight">
+          Join the waitlist
+        </h2>
+       
+
+        <!-- Messages -->
+        {% if messages %}
+        <div class="max-w-md mx-auto mb-6">
+          {% for message in messages %}
+          <div class="p-3 rounded-lg mb-3 {% if message.tags == 'success' %}bg-green-50 text-seam-success border border-green-200{% else %}bg-red-50 text-seam-error border border-red-200{% endif %}">
+            {{ message }}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="max-w-md mx-auto">
+          <form method="post">
+            {% csrf_token %}
+            <div class="flex flex-col sm:flex-row gap-3 mb-4">
+              <input
+                type="email"
+                name="email"
+                id="id_email"
+                placeholder="Enter your email"
+                required
+                class="flex-1 px-4 py-3.5 border border-seam-border rounded-lg bg-white text-seam-text placeholder-seam-text-secondary focus:outline-none focus:border-seam-navy transition-colors text-base"
+              />
+              <button
+                type="submit"
+                class="px-8 py-3.5 bg-seam-navy text-white rounded-lg font-semibold hover:bg-seam-navy-dark transition-colors text-base whitespace-nowrap cursor-pointer"
+              >
+                Join waitlist
+              </button>
+            </div>
+
+            <div class="mb-4">
+              <p class="block text-sm font-medium text-seam-text mb-2.5 text-left">
+                {{ form.what_mostly_share.label }}
+              </p>
+              {% with current=form.what_mostly_share.value %}
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="share-type-buttons">
+                {% for value, label in form.what_mostly_share.field.choices %}
+                  {% if value != '' %}
+                  <label class="share-type-label inline-flex items-center justify-center px-3.5 py-2.5 rounded-full border text-sm cursor-pointer transition-all flex-1
+                                 bg-white border-seam-border text-seam-text hover:border-seam-navy/60
+                                 {% if current == value %}!bg-seam-navy !text-white !border-seam-navy shadow-sm{% endif %}">
+                    <input type="radio" name="what_mostly_share" value="{{ value }}" class="sr-only share-type-radio" {% if current == value %}checked{% endif %}>
+                    {{ label }}
+                  </label>
+                  {% endif %}
+                {% endfor %}
+              </div>
+              {% endwith %}
+            </div>
+
+            {% if form.email.errors %}
+            <div class="text-seam-error text-sm mt-2">
+              {{ form.email.errors.0 }}
+            </div>
+            {% endif %}
+            {% if form.what_mostly_share.errors %}
+            <div class="text-seam-error text-sm mt-2">
+              {{ form.what_mostly_share.errors.0 }}
+            </div>
+            {% endif %}
+
+            <p class="mt-4 text-xs text-seam-text-secondary text-center">
+              No spam. Just an email when Seam is ready.
+            </p>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="py-10 text-center border-t border-seam-border text-seam-text-secondary">
+    <div class="max-w-7xl mx-auto px-6">
+      <p>&copy; 2025 Seam. All rights reserved.</p>
+      <p class="mt-2 text-sm">
+        <a href="{% url 'pages:privacy_policy' %}" class="text-seam-navy hover:underline">Privacy Policy</a>
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    // Handle share type button clicks
+    document.addEventListener('DOMContentLoaded', function() {
+      const radioButtons = document.querySelectorAll('.share-type-radio');
+      const labels = document.querySelectorAll('.share-type-label');
+      
+      // Update visual state when radio button changes
+      radioButtons.forEach(function(radio) {
+        radio.addEventListener('change', function() {
+          // Remove active state from all labels
+          labels.forEach(function(label) {
+            label.classList.remove('!bg-seam-navy', '!text-white', '!border-seam-navy', 'shadow-sm');
+            label.classList.add('bg-white', 'text-seam-text', 'border-seam-border');
+          });
+          
+          // Add active state to selected label
+          if (this.checked) {
+            const selectedLabel = this.closest('.share-type-label');
+            if (selectedLabel) {
+              selectedLabel.classList.remove('bg-white', 'text-seam-text', 'border-seam-border');
+              selectedLabel.classList.add('!bg-seam-navy', '!text-white', '!border-seam-navy', 'shadow-sm');
+            }
+          }
+        });
+      });
+      
+      // Also handle label clicks to ensure radio is checked
+      labels.forEach(function(label) {
+        label.addEventListener('click', function(e) {
+          const radio = this.querySelector('.share-type-radio');
+          if (radio) {
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change'));
+          }
+        });
+      });
+    });
+  </script>
 </body>
 </html>

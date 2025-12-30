@@ -32,7 +32,7 @@ ENVIRONMENT = config('ENVIRONMENT', default='development')
 # For development, set DEBUG=True in .env
 DEBUG = config('DEBUG', default=(ENVIRONMENT == 'development'), cast=bool)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['seamhq.co.uk','www.seamhq.co.uk', 'localhost', '127.0.0.1']
 
 
 # Application definition

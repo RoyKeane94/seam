@@ -71,7 +71,11 @@
 .seamhq-mini-text {
   font-size: 13px;
   font-weight: 500;
-  color: #1E40AF;
+  color: white;
+  background: #1E40AF;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
 }
 
 /* ============================================================
@@ -114,7 +118,11 @@
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.3px;
-  color: #1E40AF;
+  color: white;
+  background: #1E40AF;
+  padding: 3px 10px;
+  border-radius: 4px;
+  display: inline-block;
 }
 
 .seamhq-close-btn {
