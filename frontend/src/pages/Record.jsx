@@ -4,6 +4,7 @@ import LogoMark from '../components/LogoMark';
 import { api, getToken } from '../api';
 import { useAuth } from '../context/AuthContext';
 import useMediaQuery from '../hooks/useMediaQuery';
+import { createVoiceRecorder, getVoiceInputStream } from '../lib/audio';
 
 const MAX_RECORDING_SECS = 300;
 
@@ -155,6 +156,7 @@ export default function Record() {
   const [searchLoading, setSearchLoading] = useState(false);
 
   const mediaRecorderRef = useRef(null);
+  const recordingFormatRef = useRef({ mimeType: 'audio/webm', extension: 'webm' });
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
   const secsRef = useRef(0);
@@ -350,21 +352,27 @@ export default function Record() {
     if (pendingNote) return;
     setUploadError('');
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const stream = await getVoiceInputStream();
+      const { recorder, mimeType, extension } = createVoiceRecorder(stream);
+      recordingFormatRef.current = { mimeType, extension };
       chunksRef.current = [];
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const { mimeType: recordedType, extension: recordedExt } = recordingFormatRef.current;
+        const blob = new Blob(chunksRef.current, { type: recordedType });
         if (!getToken()) {
           setUploadError('Session expired. Sign in again to save recordings.');
           return;
         }
         try {
-          const note = await api.createVoiceNote(blob, secsRef.current);
+          const note = await api.createVoiceNote(
+            blob,
+            secsRef.current,
+            `recording.${recordedExt}`,
+          );
           setPendingNote(note);
         } catch (err) {
           setUploadError(
@@ -375,7 +383,7 @@ export default function Record() {
         }
       };
       mediaRecorderRef.current = recorder;
-      recorder.start();
+      recorder.start(1000);
       setRecording(true);
       setSecs(0);
       secsRef.current = 0;

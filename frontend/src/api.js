@@ -98,9 +98,9 @@ export const api = {
       body: JSON.stringify({ text }),
     }),
 
-  createVoiceNote: (audioBlob, durationSecs) => {
+  createVoiceNote: (audioBlob, durationSecs, filename = 'recording.webm') => {
     const form = new FormData();
-    form.append('audio', audioBlob, 'recording.webm');
+    form.append('audio', audioBlob, filename);
     if (durationSecs != null) {
       form.append('duration_secs', String(durationSecs));
     }

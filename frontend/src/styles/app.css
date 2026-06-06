@@ -858,7 +858,7 @@
   .app-layout .topbar {
     height: 52px;
     padding: 0 20px;
-    background: var(--bg);
+    background: var(--nav-bg);
   }
 
   .app-layout .brand {
