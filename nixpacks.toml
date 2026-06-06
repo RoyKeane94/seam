@@ -1,6 +1,5 @@
-# Build the React app on deploy so production always serves the latest frontend.
-[phases.setup]
-nixPkgs = ["nodejs_20"]
+# Django (Python) + Vite frontend build on deploy.
+providers = ["python", "node"]
 
 [phases.build]
 cmds = [
