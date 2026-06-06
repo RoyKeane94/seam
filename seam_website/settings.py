@@ -174,8 +174,6 @@ ANTHROPIC_TAGGING_MODEL = config(
 
 WHISPER_PAUSE_THRESHOLD = config('WHISPER_PAUSE_THRESHOLD', default=2.0, cast=float)
 SEMANTIC_CHUNK_THRESHOLD = config('SEMANTIC_CHUNK_THRESHOLD', default=0.80, cast=float)
-# Short voice notes skip the Anthropic clean step (Whisper text is good enough).
-VOICE_SKIP_CLEAN_MAX_CHARS = config('VOICE_SKIP_CLEAN_MAX_CHARS', default=600, cast=int)
 STALE_PROCESSING_MINUTES = config('STALE_PROCESSING_MINUTES', default=5, cast=int)
 
 # Leave empty to accept any invite code during development

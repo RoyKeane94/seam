@@ -189,21 +189,13 @@ def process_note(note: Note, *, whisper_response=None) -> None:
     raw = note.raw_transcript or ''
 
     t0 = time.monotonic()
-    skip_clean = (
-        note.source == Note.Source.VOICE
-        and len(raw) <= settings.VOICE_SKIP_CLEAN_MAX_CHARS
+    cleaned = clean_text(raw)
+    logger.info(
+        'Note %s: cleaned text in %.1fs (%d chars)',
+        note.id,
+        time.monotonic() - t0,
+        len(raw),
     )
-    if skip_clean:
-        cleaned = ' '.join(raw.split())
-        logger.info('Note %s: skipped clean for short voice note (%d chars)', note.id, len(raw))
-    else:
-        cleaned = clean_text(raw)
-        logger.info(
-            'Note %s: cleaned text in %.1fs (%d chars)',
-            note.id,
-            time.monotonic() - t0,
-            len(raw),
-        )
     note.cleaned_text = cleaned
 
     if note.source == Note.Source.VOICE and whisper_response is not None:
