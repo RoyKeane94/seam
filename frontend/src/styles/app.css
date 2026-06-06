@@ -1,6 +1,6 @@
 .app-layout {
-  position: fixed;
-  inset: 0;
+  flex: 1;
+  min-height: 0;
   --bg: #ffffff;
   --nav-bg: #fffdf5;
   --ink: #0f0e0c;
@@ -9,7 +9,6 @@
   --faint: rgba(15, 14, 12, 0.5);
   --border: rgba(15, 14, 12, 0.1);
   --border-2: rgba(15, 14, 12, 0.18);
-  height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;

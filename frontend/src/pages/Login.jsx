@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthAside from '../components/AuthAside';
-import MarketingFooter from '../components/MarketingFooter';
 import MarketingNav from '../components/MarketingNav';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -75,7 +74,6 @@ export default function Login() {
           </p>
         </div>
       </main>
-      <MarketingFooter />
     </div>
   );
 }

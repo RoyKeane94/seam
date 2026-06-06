@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import MarketingFooter from '../components/MarketingFooter';
 import MarketingNav from '../components/MarketingNav';
 
 export default function NotFound() {
@@ -23,7 +22,6 @@ export default function NotFound() {
           </div>
         </div>
       </main>
-      <MarketingFooter />
     </div>
   );
 }
