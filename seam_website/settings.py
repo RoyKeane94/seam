@@ -12,11 +12,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='build-time-key-not-for-production-use')
 DEBUG = config('DEBUG', cast=bool)
 
-ALLOWED_HOSTS = config(
+ALLOWED_HOSTS = list(config(
     'ALLOWED_HOSTS',
     default='localhost,127.0.0.1',
     cast=Csv(),
-)
+))
+# Railway health checks hit localhost / healthcheck.railway.app
+for _host in ('healthcheck.railway.app', '.up.railway.app', 'localhost', '127.0.0.1'):
+    if _host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_host)
 
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
