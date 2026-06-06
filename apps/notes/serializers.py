@@ -1,0 +1,29 @@
+from rest_framework import serializers
+
+from .models import Note
+
+
+class NoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Note
+        fields = (
+            'id',
+            'created_at',
+            'source',
+            'raw_transcript',
+            'cleaned_text',
+            'duration_secs',
+            'status',
+            'tags',
+        )
+        read_only_fields = fields
+
+
+class TextNoteSerializer(serializers.Serializer):
+    text = serializers.CharField()
+
+    def validate_text(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('Text cannot be empty.')
+        return value

@@ -1,0 +1,82 @@
+.search-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.search-input-wrap {
+  flex: none;
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 22px;
+}
+
+.search-page-field {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.search-page-field::placeholder {
+  color: var(--faint);
+}
+
+.search-loading {
+  padding: 10px 22px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: var(--faint);
+  letter-spacing: 0.04em;
+}
+
+.search-results {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.search-result {
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.result-text {
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.55;
+  margin-bottom: 5px;
+}
+
+.result-text mark {
+  background: var(--yellow);
+  color: var(--ink);
+  padding: 0 2px;
+  border-radius: 2px;
+  font-style: normal;
+}
+
+.result-meta {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  color: var(--faint);
+  letter-spacing: 0.04em;
+}
+
+.search-empty {
+  padding: 40px 22px;
+  text-align: center;
+}
+
+.search-empty p {
+  font-family: "DM Serif Display", serif;
+  font-size: 18px;
+  color: var(--faint);
+  font-weight: 400;
+}
