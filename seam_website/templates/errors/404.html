@@ -1,0 +1,14 @@
+{% extends "errors/base.html" %}
+
+{% block title %}Not found — Seam{% endblock %}
+
+{% block content %}
+<p class="code">404</p>
+<h1>Page not found</h1>
+<p class="lead">That URL doesn’t exist, or it may have moved. Head back and try again.</p>
+<div class="actions">
+  <a href="/" class="btn btn-primary">Go home</a>
+  <a href="/record" class="btn btn-ghost">Open app</a>
+</div>
+{% if path %}<p class="path">{{ path }}</p>{% endif %}
+{% endblock %}

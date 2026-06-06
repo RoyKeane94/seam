@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Seam{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fffdf5;--ink:#0f0e0c;--ink-soft:#5c5852;--faint:#a8a49e;
+  --border:#ede9df;--yellow:#f0c832;--yellow-deep:#d4aa18;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  min-height:100vh;background:var(--bg);color:var(--ink);
+  font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;
+}
+nav{border-bottom:1px solid var(--border);padding:0 40px;height:52px;display:flex;align-items:center}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;letter-spacing:-.02em;color:var(--ink);text-decoration:none}
+.mk{width:20px;height:20px;display:grid;place-items:center}
+.mk svg{display:block;width:20px;height:20px}
+main{flex:1;display:flex;align-items:center;justify-content:center;padding:48px 24px}
+.panel{max-width:520px;width:100%;text-align:center}
+.code{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:clamp(36px,6vw,56px);letter-spacing:-.03em;line-height:1.05;margin-bottom:14px}
+.lead{font-size:15px;line-height:1.65;color:var(--ink-soft);margin-bottom:28px}
+.actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:500;padding:10px 18px;border-radius:999px;
+  text-decoration:none;transition:all .15s;letter-spacing:-.01em;
+}
+.btn-primary{background:var(--ink);color:#fff}
+.btn-primary:hover{background:var(--yellow);color:var(--ink)}
+.btn-ghost{border:1px solid var(--border);color:var(--ink-soft)}
+.btn-ghost:hover{color:var(--ink);border-color:var(--ink)}
+.path{
+  margin-top:22px;font-family:"JetBrains Mono",monospace;font-size:10px;
+  color:var(--faint);word-break:break-all;
+}
+@media(max-width:768px){nav{padding:0 20px}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/" class="brand">
+    <span class="mk">{% include "partials/logo.svg" %}</span>
+    seam
+  </a>
+</nav>
+<main>
+  <div class="panel">
+    {% block content %}{% endblock %}
+  </div>
+</main>
+</body>
+</html>

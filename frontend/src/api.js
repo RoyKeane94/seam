@@ -79,6 +79,14 @@ export async function publicFetch(path, opts = {}) {
   return parseResponse(response);
 }
 
+export function reportClientError(payload) {
+  fetch(BASE + '/errors/report/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
 export const api = {
   register: (payload) =>
     publicFetch('/auth/register/', {

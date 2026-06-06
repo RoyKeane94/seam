@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'apps.accounts',
     'apps.notes',
     'apps.retrieval',
+    'apps.errors',
 ]
 
 MIDDLEWARE = [
@@ -53,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.errors.middleware.ErrorLoggingMiddleware',
 ]
 
 ROOT_URLCONF = 'seam_website.urls'
@@ -140,6 +142,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'EXCEPTION_HANDLER': 'apps.errors.exceptions.api_exception_handler',
 }
 
 CORS_ALLOWED_ORIGINS = config(

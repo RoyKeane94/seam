@@ -1,0 +1,13 @@
+{% extends "errors/base.html" %}
+
+{% block title %}Access denied — Seam{% endblock %}
+
+{% block content %}
+<p class="code">403</p>
+<h1>Access denied</h1>
+<p class="lead">You don’t have permission to view this page.</p>
+<div class="actions">
+  <a href="/login" class="btn btn-primary">Sign in</a>
+  <a href="/" class="btn btn-ghost">Go home</a>
+</div>
+{% endblock %}
