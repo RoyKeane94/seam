@@ -15,7 +15,7 @@ from .models import Chunk, Note
 
 logger = logging.getLogger(__name__)
 
-CLEANING_PROMPT = """Fix grammar, remove filler words (um, uh, like, you know, look, right, kind of, I mean, basically), remove false starts and repeated words, split run-ons at natural clause boundaries. Do not add, interpret, or change vocabulary. Return only the cleaned text. If a sentence cannot be repaired without guessing at meaning, remove it entirely.
+CLEANING_PROMPT = """Fix grammar, remove filler words (um, uh, like, you know, look, right, kind of, I mean, just, actually, literally, obviously, basically, essentially, clearly, so), remove false starts and repeated words, split run-ons at natural clause boundaries. Group into paragraphs by topic shift. Do not add, interpret, or change vocabulary. Return only the cleaned text. If a sentence cannot be repaired without guessing at meaning, remove it entirely.
 
 Text to clean:
 {raw_text}"""
