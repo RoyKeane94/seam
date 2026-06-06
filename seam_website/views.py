@@ -39,7 +39,9 @@ def spa(request):
             status=503,
             content_type='text/html',
         )
-    return FileResponse(index.open('rb'), content_type='text/html; charset=utf-8')
+    response = FileResponse(index.open('rb'), content_type='text/html; charset=utf-8')
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return response
 
 
 def api_root(request):

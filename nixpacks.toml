@@ -1,0 +1,9 @@
+# Build the React app on deploy so production always serves the latest frontend.
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.build]
+cmds = [
+  "cd frontend && npm ci",
+  "cd frontend && npm run build",
+]
