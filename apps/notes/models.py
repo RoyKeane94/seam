@@ -39,6 +39,7 @@ class Note(models.Model):
         default=list,
         blank=True,
     )
+    error_message = models.TextField(blank=True, null=True)
 
     class Meta:
         db_table = 'notes_note'

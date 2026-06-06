@@ -49,7 +49,9 @@ async function parseResponse(response, { redirectOn401 = true } = {}) {
       data.detail ||
       (typeof data === 'object' ? Object.values(data).flat().join(' ') : null) ||
       'Something went wrong. Try again.';
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
 
   return data;

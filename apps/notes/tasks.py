@@ -9,7 +9,14 @@ from django.conf import settings
 from django.db import close_old_connections
 
 from .models import Note
-from .services import apply_tags_to_note, process_note
+from .services import (
+    EmptyNoteError,
+    apply_tags_to_note,
+    is_meaningful_voice_transcript,
+    mark_note_failed,
+    process_note,
+    processing_error_reason,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +75,33 @@ def process_voice_note(note_id: str, audio_path: str) -> None:
         note.raw_transcript = transcript.text
         note.save(update_fields=['raw_transcript'])
 
-        process_note(note, whisper_response=transcript)
+        if not is_meaningful_voice_transcript(transcript.text):
+            logger.info(
+                'Discarding voice note %s: fewer than %d words',
+                note_id,
+                settings.VOICE_MIN_WORDS,
+            )
+            note.delete()
+            return
+
+        try:
+            process_note(note, whisper_response=transcript)
+        except EmptyNoteError:
+            logger.info('Discarding voice note %s: no meaningful content', note_id)
+            note.delete()
+            return
+
         dispatch_task(tag_note, str(note.id))
-    except Exception:
+    except Exception as exc:
         logger.exception('Voice note %s failed during processing', note_id)
-        Note.objects.filter(id=note_id).update(status=Note.Status.FAILED)
+        try:
+            note = Note.objects.get(id=note_id)
+            mark_note_failed(note, exc)
+        except Note.DoesNotExist:
+            Note.objects.filter(id=note_id).update(
+                status=Note.Status.FAILED,
+                error_message=processing_error_reason(exc),
+            )
         raise
     finally:
         if os.path.exists(audio_path):

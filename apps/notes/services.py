@@ -15,13 +15,124 @@ from .models import Chunk, Note
 
 logger = logging.getLogger(__name__)
 
-CLEANING_PROMPT = """Fix grammar, remove filler words (um, uh, like, you know, look, right, kind of, I mean, just, actually, literally, obviously, basically, essentially, clearly, so), remove false starts and repeated words, split run-ons at natural clause boundaries. Group into paragraphs by topic shift. Do not add, interpret, or change vocabulary. Return only the cleaned text. If a sentence cannot be repaired without guessing at meaning, remove it entirely.
+CLEANING_PROMPT = """Fix grammar, remove filler words (um, uh, like, you know, look, right, kind of, I mean, just, actually, literally, obviously, basically, essentially, clearly, so), remove false starts and repeated words, split run-ons at natural clause boundaries. Group into paragraphs by topic shift. Do not add, interpret, or change vocabulary. Return only the cleaned text. If a sentence cannot be repaired without guessing at meaning, remove it entirely. If nothing meaningful remains, return an empty string — do not explain or apologize.
 
 Text to clean:
 {raw_text}"""
 
 DEFAULT_MAX_CHUNK_TOKENS = 150
 DEFAULT_CHUNK_OVERLAP = 1
+
+_MEANINGLESS_MARKERS = (
+    'no text to return',
+    'no valid text to clean',
+    'no text to clean',
+    'does not contain meaningful content',
+    'nothing to clean',
+    'nothing worth saving',
+    'cannot be cleaned',
+    'unable to clean',
+)
+
+_META_BRACKET_HINTS = (
+    'clean',
+    'return',
+    'meaningful content',
+    'nothing to',
+    'no text',
+    'no valid',
+    'empty',
+)
+
+
+class EmptyNoteError(Exception):
+    """Raised when a note has no meaningful content worth saving."""
+
+
+def processing_error_reason(exc: BaseException) -> str:
+    """Map an exception to a short, user-safe explanation."""
+    if isinstance(exc, EmptyNoteError):
+        return 'Nothing worth saving.'
+
+    exc_name = type(exc).__name__
+
+    try:
+        import anthropic
+
+        if isinstance(exc, anthropic.RateLimitError):
+            return 'The cleaning service is busy — try again in a moment.'
+        if isinstance(exc, anthropic.APIConnectionError):
+            return 'Could not reach the cleaning service.'
+        if isinstance(exc, anthropic.AuthenticationError):
+            return 'The cleaning service is unavailable.'
+        if isinstance(exc, anthropic.APIStatusError):
+            return 'The cleaning service returned an error.'
+    except ImportError:
+        pass
+
+    try:
+        import openai
+
+        if isinstance(exc, openai.RateLimitError):
+            return 'The transcription service is busy — try again in a moment.'
+        if isinstance(exc, openai.APIConnectionError):
+            return 'Could not reach the transcription service.'
+        if isinstance(exc, openai.AuthenticationError):
+            return 'The transcription service is unavailable.'
+        if isinstance(exc, openai.APIStatusError):
+            if getattr(exc, 'status_code', None) == 413:
+                return 'The recording file is too large.'
+            return 'The transcription service returned an error.'
+    except ImportError:
+        pass
+
+    if isinstance(exc, ValueError):
+        return 'The note could not be indexed correctly.'
+
+    if exc_name in ('TimeoutError', 'ConnectTimeout', 'ReadTimeout'):
+        return 'The request timed out — try again.'
+
+    return 'Something unexpected went wrong.'
+
+
+def format_processing_failure(reason: str) -> str:
+    if reason == 'Nothing worth saving.':
+        return reason
+    return f'Failed to process note: {reason}'
+
+
+def mark_note_failed(note: Note, exc: BaseException) -> str:
+    reason = processing_error_reason(exc)
+    note.status = Note.Status.FAILED
+    note.error_message = reason
+    note.save(update_fields=['status', 'error_message'])
+    return reason
+
+
+def word_count(text: str) -> int:
+    return len(re.findall(r"\b[\w']+\b", text or '', re.UNICODE))
+
+
+def is_meaningful_cleaned_text(text: str) -> bool:
+    stripped = (text or '').strip()
+    if not stripped:
+        return False
+    lower = stripped.lower()
+    words = word_count(stripped)
+
+    if words <= 15 and any(marker in lower for marker in _MEANINGLESS_MARKERS):
+        return False
+
+    if re.match(r'^\[.+\]$', stripped, re.DOTALL):
+        inner = lower[1:-1]
+        if any(hint in inner for hint in _META_BRACKET_HINTS):
+            return False
+
+    return words >= 1
+
+
+def is_meaningful_voice_transcript(text: str) -> bool:
+    return word_count(text) >= settings.VOICE_MIN_WORDS
 
 
 def _estimate_tokens(text: str) -> int:
@@ -190,6 +301,8 @@ def process_note(note: Note, *, whisper_response=None) -> None:
 
     t0 = time.monotonic()
     cleaned = clean_text(raw)
+    if not is_meaningful_cleaned_text(cleaned):
+        raise EmptyNoteError('No meaningful content after cleaning')
     logger.info(
         'Note %s: cleaned text in %.1fs (%d chars)',
         note.id,
@@ -223,6 +336,9 @@ def process_note(note: Note, *, whisper_response=None) -> None:
 
     if texts and len(embeddings) != len(texts):
         raise ValueError(f'Note {note.id}: expected {len(texts)} embeddings, got {len(embeddings)}')
+
+    if not texts:
+        raise EmptyNoteError('No content to index')
 
     logger.info('Note %s: saving %d chunk(s) with embeddings', note.id, len(texts))
     note.chunks.all().delete()
@@ -346,11 +462,12 @@ def normalize_tags(new_tags: list[str], existing_corpus: list[str]) -> list[str]
 def fail_stale_processing_notes(user) -> int:
     """Mark abandoned pending/processing notes as failed."""
     cutoff = timezone.now() - timedelta(minutes=settings.STALE_PROCESSING_MINUTES)
+    reason = 'Processing took too long — try again.'
     updated = Note.objects.filter(
         user=user,
         status__in=[Note.Status.PENDING, Note.Status.PROCESSING],
         created_at__lt=cutoff,
-    ).update(status=Note.Status.FAILED)
+    ).update(status=Note.Status.FAILED, error_message=reason)
     if updated:
         logger.info('Marked %d stale note(s) as failed for user %s', updated, user.id)
     return updated

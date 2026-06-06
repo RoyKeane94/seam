@@ -7,6 +7,16 @@ import useMediaQuery from '../hooks/useMediaQuery';
 import { createVoiceRecorder, getVoiceInputStream } from '../lib/audio';
 
 const MAX_RECORDING_SECS = 300;
+const MSG_NOTHING_SAVED = 'Nothing worth saving.';
+const MSG_MAX_RECORDING = 'Recordings are limited to 5 minutes.';
+const SUCCESS_TOASTS = new Set(['Saved', 'Indexed', 'Deleted']);
+
+function formatProcessingFailure(note) {
+  if (note?.error_message) {
+    return `Failed to process note: ${note.error_message}`;
+  }
+  return 'Failed to process note. Try again.';
+}
 
 function TagPills({ tags, noteId, onTagClick, onTagRemove, editable = false }) {
   if (!tags?.length) return null;
@@ -37,9 +47,30 @@ function formatTime(secs) {
   return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 }
 
-function formatNoteTime(iso) {
+function ordinalDay(day) {
+  if (day >= 11 && day <= 13) return `${day}th`;
+  switch (day % 10) {
+    case 1:
+      return `${day}st`;
+    case 2:
+      return `${day}nd`;
+    case 3:
+      return `${day}rd`;
+    default:
+      return `${day}th`;
+  }
+}
+
+function formatNoteDateTime(iso) {
   const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const weekday = d.toLocaleDateString('en-GB', { weekday: 'short' });
+  const month = d.toLocaleDateString('en-GB', { month: 'long' });
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `${weekday}, ${ordinalDay(d.getDate())} ${month} · ${time}`;
+}
+
+function formatNoteTime(iso) {
+  return formatNoteDateTime(iso);
 }
 
 function groupLabel(iso) {
@@ -103,10 +134,7 @@ function highlightText(text, query) {
 }
 
 function formatResultMeta(iso) {
-  const d = new Date(iso);
-  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  return `${date} · ${time}`;
+  return formatNoteDateTime(iso);
 }
 
 function formatReaderDate(iso) {
@@ -127,6 +155,8 @@ function formatReaderTime(iso) {
 const PROCESSING_POLL_MS = 4000;
 const TRACKING_KEY = 'seam_processing_ids';
 const CLIENT_TRACK_MS = 5 * 60 * 1000;
+const SIDEBAR_TODAY_LIMIT = 10;
+const ALL_NOTES_PAGE_SIZE = 10;
 
 function isInFlight(note) {
   return note.status === 'pending' || note.status === 'processing';
@@ -172,6 +202,7 @@ export default function Record() {
     const onSearch = location.pathname === '/search';
     setTab(onSearch ? 'retrieve' : 'record');
     if (isMobile) setSearchOpen(onSearch);
+    if (!isMobile && onSearch) setSidebarView('retrieve');
   }, [location.pathname, isMobile]);
 
   const [text, setText] = useState('');
@@ -190,6 +221,10 @@ export default function Record() {
   const [results, setResults] = useState([]);
   const [searched, setSearched] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [sidebarView, setSidebarView] = useState('today');
+  const [expandedAllNoteId, setExpandedAllNoteId] = useState(null);
+  const [allNotesPage, setAllNotesPage] = useState(1);
+  const [mobileEntriesPage, setMobileEntriesPage] = useState(1);
 
   const mediaRecorderRef = useRef(null);
   const recordingFormatRef = useRef({ mimeType: 'audio/webm', extension: 'webm' });
@@ -246,6 +281,14 @@ export default function Record() {
   }, []);
 
   useEffect(() => {
+    if (sidebarView !== 'all') {
+      setExpandedAllNoteId(null);
+    } else {
+      setAllNotesPage(1);
+    }
+  }, [sidebarView]);
+
+  useEffect(() => {
     loadNotes();
     loadTags();
   }, [loadNotes, loadTags]);
@@ -282,22 +325,41 @@ export default function Record() {
     async function pollProcessingNotes() {
       try {
         const updates = await Promise.all(
-          activeProcessingIds.map((id) => api.getNote(id)),
+          activeProcessingIds.map(async (id) => {
+            try {
+              return { id, note: await api.getNote(id) };
+            } catch (err) {
+              if (err.status === 404) {
+                return { id, discarded: true };
+              }
+              return { id };
+            }
+          }),
         );
         if (cancelled) return;
 
+        const discardedIds = updates.filter((u) => u.discarded).map((u) => u.id);
+        if (discardedIds.length) {
+          for (const id of discardedIds) {
+            removeTrackedId(id);
+          }
+          setNotes((prev) => prev.filter((n) => !discardedIds.includes(n.id)));
+          showToast(MSG_NOTHING_SAVED);
+        }
+
+        const resolved = updates.filter((u) => u.note);
         setNotes((prev) =>
-          prev.map((n) => updates.find((u) => u.id === n.id) || n),
+          prev.map((n) => resolved.find((u) => u.note.id === n.id)?.note || n),
         );
 
-        for (const note of updates) {
+        for (const { note } of resolved) {
           if (note.status === 'ready') {
             removeTrackedId(note.id);
             loadTags();
             showToast('Indexed');
           } else if (note.status === 'failed') {
             removeTrackedId(note.id);
-            setUploadError('Upload failed. Try again.');
+            setUploadError(formatProcessingFailure(note));
           }
         }
       } catch {
@@ -346,6 +408,24 @@ export default function Record() {
     toastTimerRef.current = setTimeout(() => setToast(''), 1600);
   }
 
+  function selectSidebarView(view) {
+    setSidebarView(view);
+    setSelectedNote(null);
+    if (view === 'retrieve') {
+      setTab('retrieve');
+      navigate('/search', { replace: true });
+      setTimeout(() => retrieveInputRef.current?.focus(), 50);
+    } else {
+      setTab('record');
+      if (location.pathname === '/search') {
+        navigate('/record', { replace: true });
+      }
+      if (view === 'record') {
+        setTimeout(() => composeInputRef.current?.focus(), 50);
+      }
+    }
+  }
+
   function closeNote() {
     setSelectedNote(null);
   }
@@ -381,7 +461,11 @@ export default function Record() {
     setSelectedNote(null);
     setTab('retrieve');
     setQuery(tag);
-    if (isMobile) setSearchOpen(true);
+    if (isMobile) {
+      setSearchOpen(true);
+    } else {
+      setSidebarView('retrieve');
+    }
     navigate('/search', { replace: true });
     setTimeout(() => retrieveInputRef.current?.focus(), isMobile ? 320 : 50);
   }
@@ -428,10 +512,10 @@ export default function Record() {
         loadNotes();
         loadTags();
       }, 4000);
-    } catch {
+    } catch (err) {
       setText(trimmed);
       resizeCompose(composeInputRef.current);
-      showToast('Failed');
+      showToast(err.message || MSG_NOTHING_SAVED);
     } finally {
       setTextSubmitting(false);
       setPendingText('');
@@ -469,7 +553,7 @@ export default function Record() {
           setUploadError(
             err.message === 'Unauthorized'
               ? 'Session expired. Sign in again to save recordings.'
-              : 'Upload failed. Try again.',
+              : err.message || 'Upload failed. Try again.',
           );
         }
       };
@@ -483,6 +567,7 @@ export default function Record() {
           const next = s + 1;
           secsRef.current = next;
           if (next >= MAX_RECORDING_SECS) {
+            showToast(MSG_MAX_RECORDING);
             stopRecording();
             return MAX_RECORDING_SECS;
           }
@@ -512,7 +597,34 @@ export default function Record() {
     if (isInFlight(n)) return isTrackedProcessing(n, trackedIds);
     return true;
   });
+  const todayNotes = feedNotes.slice(0, SIDEBAR_TODAY_LIMIT);
   const grouped = groupNotes(feedNotes);
+  const allNotesTotalPages = Math.max(1, Math.ceil(feedNotes.length / ALL_NOTES_PAGE_SIZE));
+  const mobileEntriesTotalPages = allNotesTotalPages;
+  const paginatedAllNotes = useMemo(() => {
+    const start = (allNotesPage - 1) * ALL_NOTES_PAGE_SIZE;
+    return feedNotes.slice(start, start + ALL_NOTES_PAGE_SIZE);
+  }, [feedNotes, allNotesPage]);
+  const paginatedMobileNotes = useMemo(() => {
+    const start = (mobileEntriesPage - 1) * ALL_NOTES_PAGE_SIZE;
+    return feedNotes.slice(start, start + ALL_NOTES_PAGE_SIZE);
+  }, [feedNotes, mobileEntriesPage]);
+  const mobileGrouped = groupNotes(paginatedMobileNotes);
+  const allNotesRangeStart =
+    feedNotes.length === 0 ? 0 : (allNotesPage - 1) * ALL_NOTES_PAGE_SIZE + 1;
+  const allNotesRangeEnd = Math.min(allNotesPage * ALL_NOTES_PAGE_SIZE, feedNotes.length);
+
+  useEffect(() => {
+    if (allNotesPage > allNotesTotalPages) {
+      setAllNotesPage(allNotesTotalPages);
+    }
+  }, [allNotesPage, allNotesTotalPages]);
+
+  useEffect(() => {
+    if (mobileEntriesPage > mobileEntriesTotalPages) {
+      setMobileEntriesPage(mobileEntriesTotalPages);
+    }
+  }, [mobileEntriesPage, mobileEntriesTotalPages]);
   const streak = computeStreak(notes);
   const userInitial = user?.email?.[0]?.toUpperCase() || '?';
   const composePlaceholder = userTags.length
@@ -613,7 +725,7 @@ export default function Record() {
     <div className="entry-reader">
       <div className="entry-reader-toolbar">
         <button type="button" className="entry-reader-back" onClick={closeNote}>
-          ← Record
+          ← {sidebarView === 'all' ? 'All notes' : 'Record'}
         </button>
         <button
           type="button"
@@ -681,6 +793,247 @@ export default function Record() {
     </div>
   );
 
+  function toggleAllNoteExpand(note) {
+    if (isTrackedProcessing(note, trackedIds)) return;
+    setExpandedAllNoteId((current) => (current === note.id ? null : note.id));
+  }
+
+  function renderAllNotesEntry(note) {
+    const expanded = expandedAllNoteId === note.id;
+    const fullText = note.cleaned_text || note.raw_transcript || '…';
+    const processing = isTrackedProcessing(note, trackedIds);
+
+    return (
+      <div
+        key={note.id}
+        className={`all-notes-entry${expanded ? ' expanded' : ''}${processing ? ' in-flight' : ''}`}
+      >
+        <div className="all-notes-entry-row">
+          <button
+            type="button"
+            className="all-notes-entry-toggle"
+            onClick={() => toggleAllNoteExpand(note)}
+            aria-expanded={expanded}
+          >
+            {!expanded && (
+              <div className={`all-notes-entry-preview${processing ? ' pending' : ''}`}>
+                {processing ? 'Processing…' : fullText}
+              </div>
+            )}
+            {!processing && note.tags?.length > 0 && (
+              <TagPills
+                tags={note.tags}
+                noteId={note.id}
+                onTagClick={searchByTag}
+                onTagRemove={handleRemoveTag}
+                editable
+              />
+            )}
+            <div className="all-notes-entry-meta">
+              <div
+                className={`entry-dot${processing ? ' pending' : ''}${note.source === 'voice' && !processing ? ' voice' : ''}`}
+              />
+              <span>{processing ? 'processing' : formatNoteTime(note.created_at)}</span>
+            </div>
+          </button>
+          <div className="all-notes-entry-actions">
+            <button
+              type="button"
+              className="all-notes-entry-expand"
+              onClick={() => toggleAllNoteExpand(note)}
+              aria-expanded={expanded}
+              aria-label={expanded ? 'Collapse note' : 'Expand note'}
+            >
+              {expanded ? '−' : '+'}
+            </button>
+            {!processing && (
+              <button
+                type="button"
+                className="all-notes-entry-delete"
+                aria-label="Delete note"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (expandedAllNoteId === note.id) setExpandedAllNoteId(null);
+                  handleDeleteNote(note.id);
+                }}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+                  <path d="M10 11v6M14 11v6" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+        {expanded && !processing && (
+          <div className="all-notes-entry-body">{fullText}</div>
+        )}
+      </div>
+    );
+  }
+
+  function renderAllNotesList() {
+    return paginatedAllNotes.map((note) => renderAllNotesEntry(note));
+  }
+
+  function renderFeedEntry(note) {
+    return (
+      <button
+        key={note.id}
+        type="button"
+        className={`entry${selectedNote?.id === note.id ? ' active' : ''}${isTrackedProcessing(note, trackedIds) ? ' in-flight' : ''}`}
+        onClick={() => openNote(note)}
+      >
+        <div className={`entry-text${isTrackedProcessing(note, trackedIds) ? ' pending' : ''}`}>
+          {entryPreview(note, trackedIds)}
+        </div>
+        {!isTrackedProcessing(note, trackedIds) && (
+          <TagPills
+            tags={note.tags}
+            noteId={note.id}
+            onTagClick={searchByTag}
+            onTagRemove={handleRemoveTag}
+            editable
+          />
+        )}
+        <div className="entry-meta">
+          <div
+            className={`entry-dot${isTrackedProcessing(note, trackedIds) ? ' pending' : ''}${note.source === 'voice' && !isTrackedProcessing(note, trackedIds) ? ' voice' : ''}`}
+          />
+          <span>{isTrackedProcessing(note, trackedIds) ? 'processing' : formatNoteTime(note.created_at)}</span>
+        </div>
+      </button>
+    );
+  }
+
+  function renderEntryList(notesList, { grouped: byGroup = false } = {}) {
+    if (textSubmitting && sidebarView === 'today') {
+      return (
+        <>
+          {optimisticTextEntry}
+          {notesList.map((note) => renderFeedEntry(note))}
+        </>
+      );
+    }
+    if (byGroup) {
+      return grouped.map((group) => (
+        <div key={group.label}>
+          <div className="group-label">{group.label}</div>
+          {group.notes.map((note) => renderFeedEntry(note))}
+        </div>
+      ));
+    }
+    return notesList.map((note) => renderFeedEntry(note));
+  }
+
+  const sidebarRetrievePanel = (
+    <>
+      <div className="retrieve-search-bar">
+        <svg viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+        <input
+          ref={retrieveInputRef}
+          className="retrieve-input"
+          type="text"
+          placeholder="What did I say about…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+      {userTags.length > 0 && (
+        <div className="retrieve-chips">
+          {userTags.map((chip) => (
+            <button key={chip} type="button" className="chip" onClick={() => setQuery(chip)}>
+              {chip}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="retrieve-results">
+        {searchLoading && <div className="search-loading">Searching…</div>}
+        {retrieveEmpty && !searchLoading ? (
+          <div className="retrieve-empty">
+            <div className="retrieve-empty-head">{retrieveEmpty.head}</div>
+            <div className="retrieve-empty-sub">{retrieveEmpty.sub}</div>
+          </div>
+        ) : (
+          !searchLoading &&
+          results.map((result, i) => (
+            <div key={`${result.note_id}-${i}`} className="result-item">
+              <div className="result-text">{highlightText(result.text, query)}</div>
+              <div className="result-meta">{formatResultMeta(result.created_at)}</div>
+            </div>
+          ))
+        )}
+      </div>
+    </>
+  );
+
+  function renderPagination(page, setPage, totalPages, onPageChange) {
+    if (feedNotes.length <= ALL_NOTES_PAGE_SIZE) return null;
+    return (
+      <div className="entries-pagination">
+        <button
+          type="button"
+          className="all-notes-page-btn"
+          disabled={page <= 1}
+          onClick={() => {
+            onPageChange?.();
+            setPage((p) => p - 1);
+          }}
+        >
+          Previous
+        </button>
+        <span className="all-notes-page-label">
+          Page {page} of {totalPages}
+        </span>
+        <button
+          type="button"
+          className="all-notes-page-btn"
+          disabled={page >= totalPages}
+          onClick={() => {
+            onPageChange?.();
+            setPage((p) => p + 1);
+          }}
+        >
+          Next
+        </button>
+      </div>
+    );
+  }
+
+  const allNotesPanel = (
+    <div className="all-notes-main">
+      <div className="all-notes-header">
+        <h1 className="all-notes-title">All notes</h1>
+        <p className="all-notes-sub">
+          {feedNotes.length === 0
+            ? '0 entries'
+            : `${allNotesRangeStart}–${allNotesRangeEnd} of ${feedNotes.length} entries`}
+        </p>
+      </div>
+      <div className="all-notes-list">
+        {feedNotes.length === 0 && !textSubmitting ? (
+          feedEmpty
+        ) : (
+          <>
+            {textSubmitting && allNotesPage === 1 && optimisticTextEntry}
+            {renderAllNotesList()}
+          </>
+        )}
+      </div>
+      {renderPagination(allNotesPage, setAllNotesPage, allNotesTotalPages, () =>
+        setExpandedAllNoteId(null),
+      )}
+    </div>
+  );
+
+  const bannerMessage = uploadError || toast;
+  const isErrorBanner =
+    Boolean(uploadError) || (toast && !SUCCESS_TOASTS.has(toast));
+
   return (
     <div className={`app-layout${isMobile ? ' mobile' : ''}`}>
       <header className="topbar">
@@ -690,15 +1043,6 @@ export default function Record() {
         </a>
         <div className="topbar-spacer" />
         <div className="topbar-right">
-          {!isMobile && (
-            <button
-              type="button"
-              className={`topbar-retrieve${tab === 'retrieve' ? ' active' : ''}`}
-              onClick={() => switchTab('retrieve')}
-            >
-              Retrieve
-            </button>
-          )}
           {streak > 0 && (
             <div className="nav-streak">
               <div className="streak-pip" />
@@ -716,6 +1060,14 @@ export default function Record() {
         </div>
       </header>
 
+      <div
+        className={`app-banner${bannerMessage ? ' show' : ''}${isErrorBanner ? ' error' : ''}`}
+        role="status"
+        aria-live="polite"
+      >
+        {bannerMessage}
+      </div>
+
       {isMobile ? (
         <main className="mobile-main">
           {selectedNote ? (
@@ -725,21 +1077,20 @@ export default function Record() {
               <div className="mobile-record-section">
                 <div className="record-header">{recordControls}</div>
                 {composeArea}
-                {uploadError && <p className="upload-error">{uploadError}</p>}
               </div>
               <div className="mobile-bottom-area">
                 <div className="mobile-entries">
-                  {grouped.length === 0 && !textSubmitting ? (
+                  {feedNotes.length === 0 && !textSubmitting ? (
                     feedEmpty
                   ) : (
                     <>
-                      {textSubmitting && (
+                      {textSubmitting && mobileEntriesPage === 1 && (
                         <>
                           <div className="entry-group-label">Today</div>
                           {optimisticTextEntry}
                         </>
                       )}
-                      {grouped.map((group) => (
+                      {mobileGrouped.map((group) => (
                         <div key={group.label}>
                           <div className="entry-group-label">{group.label}</div>
                           {group.notes.map((note) => (
@@ -770,6 +1121,7 @@ export default function Record() {
                     </>
                   )}
                 </div>
+                {renderPagination(mobileEntriesPage, setMobileEntriesPage, mobileEntriesTotalPages)}
                 <div className="mobile-bottom-bar">
                   <button type="button" className="mobile-retrieve-row" onClick={openSearch}>
                     <div className="retrieve-icon">
@@ -815,119 +1167,63 @@ export default function Record() {
             )}
             <div className="search-results">{retrieveResults}</div>
           </div>
-          <div className={`toast mobile-toast${toast ? ' show' : ''}`}>{toast}</div>
         </main>
       ) : (
       <div className="app-body desktop-only">
         <aside className="col-feed">
-          {tab === 'record' ? (
-            <>
-              <div className="feed-header">
-                <span className="feed-title">Entries</span>
-              </div>
-              <div className="feed">
-                {grouped.length === 0 && !textSubmitting ? (
-                  feedEmpty
-                ) : (
-                  <>
-                    {textSubmitting && (
-                      <>
-                        <div className="group-label">Today</div>
-                        {optimisticTextEntry}
-                      </>
-                    )}
-                    {grouped.map((group) => (
-                      <div key={group.label}>
-                        <div className="group-label">{group.label}</div>
-                        {group.notes.map((note) => (
-                          <button
-                            key={note.id}
-                            type="button"
-                            className={`entry${selectedNote?.id === note.id ? ' active' : ''}${isTrackedProcessing(note, trackedIds) ? ' in-flight' : ''}`}
-                            onClick={() => openNote(note)}
-                          >
-                            <div className={`entry-text${isTrackedProcessing(note, trackedIds) ? ' pending' : ''}`}>
-                              {entryPreview(note, trackedIds)}
-                            </div>
-                            {!isTrackedProcessing(note, trackedIds) && (
-                              <TagPills
-                                tags={note.tags}
-                                noteId={note.id}
-                                onTagClick={searchByTag}
-                                onTagRemove={handleRemoveTag}
-                                editable
-                              />
-                            )}
-                            <div className="entry-meta">
-                              <div
-                                className={`entry-dot${isTrackedProcessing(note, trackedIds) ? ' pending' : ''}${note.source === 'voice' && !isTrackedProcessing(note, trackedIds) ? ' voice' : ''}`}
-                              />
-                              <span>{isTrackedProcessing(note, trackedIds) ? 'processing' : formatNoteTime(note.created_at)}</span>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="col-retrieve">
-              <div className="feed-header">
-                <span className="feed-title">Retrieve</span>
-              </div>
-              <div className="retrieve-search-bar">
-                <svg viewBox="0 0 24 24">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.35-4.35" />
-                </svg>
-                <input
-                  ref={retrieveInputRef}
-                  className="retrieve-input"
-                  type="text"
-                  placeholder="What did I say about…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </div>
-              {userTags.length > 0 && (
-                <div className="retrieve-chips">
-                  {userTags.map((chip) => (
-                    <button key={chip} type="button" className="chip" onClick={() => setQuery(chip)}>
-                      {chip}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="retrieve-results">
-                {searchLoading && <div className="search-loading">Searching…</div>}
-                {retrieveEmpty && !searchLoading ? (
-                  <div className="retrieve-empty">
-                    <div className="retrieve-empty-head">{retrieveEmpty.head}</div>
-                    <div className="retrieve-empty-sub">{retrieveEmpty.sub}</div>
-                  </div>
-                ) : (
-                  !searchLoading &&
-                  results.map((result, i) => (
-                    <div key={`${result.note_id}-${i}`} className="result-item">
-                      <div className="result-text">
-                        {highlightText(result.text, query)}
-                      </div>
-                      <div className="result-meta">
-                        {formatResultMeta(result.created_at)}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+          <nav className="sidebar-nav" aria-label="Sidebar">
+            <div className="sidebar-section-label">Core</div>
+            <button
+              type="button"
+              className={`sidebar-nav-item${sidebarView === 'today' ? ' active' : ''}`}
+              onClick={() => selectSidebarView('today')}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              className={`sidebar-nav-item${sidebarView === 'record' ? ' active' : ''}`}
+              onClick={() => selectSidebarView('record')}
+            >
+              Record
+            </button>
+            <button
+              type="button"
+              className={`sidebar-nav-item${sidebarView === 'retrieve' ? ' active' : ''}`}
+              onClick={() => selectSidebarView('retrieve')}
+            >
+              Retrieve
+            </button>
+            <div className="sidebar-section-label">Library</div>
+            <button
+              type="button"
+              className={`sidebar-nav-item${sidebarView === 'all' ? ' active' : ''}`}
+              onClick={() => selectSidebarView('all')}
+            >
+              All notes
+            </button>
+          </nav>
+
+          {(sidebarView === 'today' || sidebarView === 'retrieve') && (
+          <div className={`feed feed-${sidebarView}`}>
+            {sidebarView === 'today' && (
+              todayNotes.length === 0 && !textSubmitting ? (
+                feedEmpty
+              ) : (
+                renderEntryList(todayNotes)
+              )
+            )}
+
+            {sidebarView === 'retrieve' && sidebarRetrievePanel}
+          </div>
           )}
         </aside>
 
         <div className="col-main">
           {selectedNote ? (
             entryReader
+          ) : sidebarView === 'all' ? (
+            allNotesPanel
           ) : (
             <>
               <div className="compose-top">
@@ -954,14 +1250,11 @@ export default function Record() {
                   </div>
                 )}
               </div>
-              {uploadError && <p className="upload-error">{uploadError}</p>}
             </>
           )}
         </div>
       </div>
       )}
-
-      {!isMobile && <div className={`toast${toast ? ' show' : ''}`}>{toast}</div>}
     </div>
   );
 }

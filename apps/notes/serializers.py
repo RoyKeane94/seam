@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import Note
+from .services import word_count
 
 
 class NoteSerializer(serializers.ModelSerializer):
@@ -14,6 +15,7 @@ class NoteSerializer(serializers.ModelSerializer):
             'cleaned_text',
             'duration_secs',
             'status',
+            'error_message',
             'tags',
         )
         read_only_fields = fields
@@ -26,4 +28,6 @@ class TextNoteSerializer(serializers.Serializer):
         value = value.strip()
         if not value:
             raise serializers.ValidationError('Text cannot be empty.')
+        if word_count(value) < 1:
+            raise serializers.ValidationError('Add a few words to save a note.')
         return value

@@ -175,6 +175,8 @@ ANTHROPIC_TAGGING_MODEL = config(
 WHISPER_PAUSE_THRESHOLD = config('WHISPER_PAUSE_THRESHOLD', default=2.0, cast=float)
 SEMANTIC_CHUNK_THRESHOLD = config('SEMANTIC_CHUNK_THRESHOLD', default=0.80, cast=float)
 STALE_PROCESSING_MINUTES = config('STALE_PROCESSING_MINUTES', default=5, cast=int)
+VOICE_MIN_WORDS = config('VOICE_MIN_WORDS', default=5, cast=int)
+MAX_VOICE_DURATION_SECS = config('MAX_VOICE_DURATION_SECS', default=300, cast=int)
 
 # Leave empty to accept any invite code during development
 INVITE_CODE = config('INVITE_CODE', default='')

@@ -2,6 +2,7 @@ import logging
 import os
 import tempfile
 
+from django.conf import settings
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -10,7 +11,14 @@ from rest_framework.views import APIView
 
 from .models import Note
 from .serializers import NoteSerializer, TextNoteSerializer
-from .services import fail_stale_processing_notes, get_user_tags_by_frequency, process_note
+from .services import (
+    EmptyNoteError,
+    fail_stale_processing_notes,
+    format_processing_failure,
+    get_user_tags_by_frequency,
+    mark_note_failed,
+    process_note,
+)
 from .tasks import dispatch_task, process_voice_note, tag_note
 
 logger = logging.getLogger(__name__)
@@ -35,12 +43,17 @@ class TextNoteView(APIView):
 
         try:
             process_note(note)
-        except Exception:
-            logger.exception('Text note %s failed during processing', note.id)
-            note.status = Note.Status.FAILED
-            note.save(update_fields=['status'])
+        except EmptyNoteError:
+            note.delete()
             return Response(
-                {'detail': 'Failed to process note.'},
+                {'detail': 'Nothing worth saving.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as exc:
+            logger.exception('Text note %s failed during processing', note.id)
+            reason = mark_note_failed(note, exc)
+            return Response(
+                {'detail': format_processing_failure(reason)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -66,6 +79,12 @@ class VoiceNoteView(APIView):
                 duration_secs = int(duration_secs)
             except (TypeError, ValueError):
                 duration_secs = None
+
+        if duration_secs is not None and duration_secs > settings.MAX_VOICE_DURATION_SECS:
+            return Response(
+                {'detail': 'Recordings are limited to 5 minutes.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         suffix = os.path.splitext(audio.name)[1] or '.webm'
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:

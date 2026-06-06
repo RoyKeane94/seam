@@ -3,6 +3,7 @@
   min-height: 0;
   --bg: #ffffff;
   --nav-bg: #fffdf5;
+  --topbar-h: 48px;
   --ink: #0f0e0c;
   --ink-2: #0f0e0c;
   --ink-soft: #0f0e0c;
@@ -19,7 +20,7 @@
 
 /* ── TOP BAR ── */
 .app-layout .topbar {
-  height: 48px;
+  height: var(--topbar-h);
   background: var(--nav-bg);
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -121,6 +122,291 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.app-layout .sidebar-nav {
+  flex: none;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-layout .sidebar-section-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 8px 12px 4px;
+}
+
+.app-layout .sidebar-section-label:first-child {
+  padding-top: 0;
+}
+
+.app-layout .sidebar-nav-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.app-layout .sidebar-nav-item:hover {
+  background: rgba(15, 14, 12, 0.04);
+  color: var(--ink);
+}
+
+.app-layout .sidebar-nav-item.active {
+  background: rgba(240, 200, 50, 0.18);
+  color: var(--ink);
+}
+
+.app-layout .all-notes-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.app-layout .all-notes-header {
+  flex: none;
+  padding: 32px 40px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-layout .all-notes-title {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+
+.app-layout .all-notes-sub {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: var(--faint);
+  letter-spacing: 0.04em;
+}
+
+.app-layout .all-notes-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 40px;
+  width: 100%;
+}
+
+.app-layout .all-notes-list .group-label {
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
+.app-layout .all-notes-entry {
+  width: 100%;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-layout .all-notes-entry-row {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+.app-layout .all-notes-entry-toggle {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  padding: 16px 16px 16px 40px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.1s;
+}
+
+.app-layout .all-notes-entry-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 40px 12px 0;
+}
+
+.app-layout .all-notes-entry-row:hover .all-notes-entry-toggle,
+.app-layout .all-notes-entry.expanded .all-notes-entry-toggle {
+  background: var(--nav-bg);
+}
+
+.app-layout .all-notes-entry-row:hover,
+.app-layout .all-notes-entry.expanded .all-notes-entry-row {
+  background: var(--nav-bg);
+}
+
+.app-layout .all-notes-entry-toggle:hover {
+  background: transparent;
+}
+
+.app-layout .all-notes-entry-preview {
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.5;
+  font-weight: 300;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-layout .all-notes-entry-preview.pending {
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.app-layout .all-notes-entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  color: var(--faint);
+}
+
+.app-layout .all-notes-entry-expand {
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  color: var(--faint);
+  font-size: 22px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+.app-layout .all-notes-entry-expand:hover {
+  color: var(--ink);
+}
+
+.app-layout .all-notes-entry-delete {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.app-layout .all-notes-entry-delete svg {
+  width: 15px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-layout .all-notes-entry-delete:hover {
+  color: #c0392b;
+}
+
+.app-layout .all-notes-pagination,
+.app-layout .entries-pagination {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 40px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.app-layout .all-notes-page-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.app-layout .all-notes-page-btn:hover:not(:disabled) {
+  background: var(--nav-bg);
+  border-color: var(--ink);
+}
+
+.app-layout .all-notes-page-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.app-layout .all-notes-page-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: var(--faint);
+  letter-spacing: 0.04em;
+}
+
+.app-layout .all-notes-entry-body {
+  padding: 16px 40px 32px;
+  font-size: 14px;
+  line-height: 1.65;
+  font-weight: 300;
+  color: var(--ink);
+  white-space: pre-wrap;
+  border-top: 1px solid var(--border);
+  background: var(--nav-bg);
+}
+
+.app-layout .feed-retrieve {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+.app-layout .feed-retrieve .retrieve-search-bar {
+  flex: none;
+}
+
+.app-layout .feed-retrieve .retrieve-chips {
+  flex: none;
+}
+
+.app-layout .feed-retrieve .retrieve-results {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .app-layout .col-retrieve {
@@ -811,35 +1097,51 @@
 }
 
 .app-layout .upload-error {
-  flex: none;
-  font-size: 12px;
-  color: #c0392b;
-  padding: 8px 32px 0;
+  display: none;
 }
 
-/* ── TOAST ── */
-.app-layout .toast {
+/* ── BANNER (toast + errors, top-right under nav) ── */
+.app-layout .app-banner {
   position: fixed;
-  bottom: 24px;
-  right: 32px;
+  top: calc(var(--topbar-h) + 10px);
+  right: 24px;
+  max-width: min(360px, calc(100vw - 48px));
   background: var(--ink);
   color: #fff;
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 7px 16px;
-  border-radius: 999px;
+  padding: 8px 14px;
+  border-radius: 8px;
   opacity: 0;
-  transform: translateY(6px);
+  transform: translateY(-6px);
   transition: opacity 0.18s, transform 0.18s;
   pointer-events: none;
   z-index: 100;
+  line-height: 1.4;
+  text-align: right;
 }
 
-.app-layout .toast.show {
+.app-layout .app-banner.show {
   opacity: 1;
   transform: translateY(0);
+}
+
+.app-layout .app-banner.error {
+  background: #fff8f7;
+  color: #c0392b;
+  border: 1px solid rgba(192, 57, 43, 0.18);
+  box-shadow: 0 4px 16px rgba(15, 14, 12, 0.06);
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/* legacy toast selectors — kept for compatibility */
+.app-layout .toast {
+  display: none;
 }
 
 /* ── MOBILE LAYOUT ── */
@@ -850,12 +1152,13 @@
     --faint: #b4b1a9;
     --border: #efefef;
     --border-2: #e5e5e5;
+    --topbar-h: 52px;
     font-family: "DM Sans", sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
 
   .app-layout .topbar {
-    height: 52px;
+    height: var(--topbar-h);
     padding: 0 20px;
     background: var(--nav-bg);
   }
@@ -957,9 +1260,13 @@
   }
 
   .app-layout .mobile-record-section .upload-error {
-    padding: 0 0 12px;
-    width: 100%;
-    text-align: center;
+    display: none;
+  }
+
+  .app-layout .app-banner {
+    right: 20px;
+    font-size: 10px;
+    max-width: calc(100vw - 40px);
   }
 
   .app-layout .mobile-bottom-area {
@@ -1044,6 +1351,11 @@
     flex: none;
     border-top: 1px solid var(--border);
     background: var(--bg);
+  }
+
+  .app-layout .entries-pagination {
+    padding: 12px 20px;
+    flex: none;
   }
 
   .app-layout .mobile-retrieve-row {
@@ -1197,19 +1509,6 @@
   .app-layout .search-results .retrieve-empty {
     padding: 60px 20px;
     height: auto;
-  }
-
-  .app-layout .toast.mobile-toast {
-    position: absolute;
-    bottom: 80px;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%) translateY(8px);
-    font-size: 10px;
-  }
-
-  .app-layout .toast.mobile-toast.show {
-    transform: translateX(-50%) translateY(0);
   }
 
   .app-layout .entry-reader {
