@@ -148,8 +148,14 @@ CORS_ALLOWED_ORIGINS = config(
     cast=Csv(),
 )
 
-CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+_redis_url = config('REDIS_URL', default='redis://localhost:6379/0')
+if DEBUG and 'railway.internal' in _redis_url:
+    _redis_url = 'redis://localhost:6379/0'
+
+CELERY_BROKER_URL = _redis_url
+CELERY_RESULT_BACKEND = _redis_url
+# Local dev runs tasks in-process; production uses a Celery worker + Redis.
+USE_CELERY = config('USE_CELERY', default=not DEBUG, cast=bool)
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -165,6 +171,9 @@ ANTHROPIC_TAGGING_MODEL = config(
 
 WHISPER_PAUSE_THRESHOLD = config('WHISPER_PAUSE_THRESHOLD', default=2.0, cast=float)
 SEMANTIC_CHUNK_THRESHOLD = config('SEMANTIC_CHUNK_THRESHOLD', default=0.80, cast=float)
+# Short voice notes skip the Anthropic clean step (Whisper text is good enough).
+VOICE_SKIP_CLEAN_MAX_CHARS = config('VOICE_SKIP_CLEAN_MAX_CHARS', default=600, cast=int)
+STALE_PROCESSING_MINUTES = config('STALE_PROCESSING_MINUTES', default=5, cast=int)
 
 # Leave empty to accept any invite code during development
 INVITE_CODE = config('INVITE_CODE', default='')

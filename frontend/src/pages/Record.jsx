@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LogoMark from '../components/LogoMark';
 import { api, getToken } from '../api';
@@ -124,6 +124,43 @@ function formatReaderTime(iso) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+const PROCESSING_POLL_MS = 4000;
+const TRACKING_KEY = 'seam_processing_ids';
+const CLIENT_TRACK_MS = 5 * 60 * 1000;
+
+function isInFlight(note) {
+  return note.status === 'pending' || note.status === 'processing';
+}
+
+function readTrackedIds() {
+  try {
+    const raw = sessionStorage.getItem(TRACKING_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeTrackedIds(ids) {
+  sessionStorage.setItem(TRACKING_KEY, JSON.stringify(ids));
+}
+
+function isRecentInFlight(note) {
+  const age = Date.now() - new Date(note.created_at).getTime();
+  return age >= 0 && age < CLIENT_TRACK_MS;
+}
+
+function isTrackedProcessing(note, trackedIds) {
+  return (
+    trackedIds.includes(note.id) && isInFlight(note) && isRecentInFlight(note)
+  );
+}
+
+function entryPreview(note, trackedIds) {
+  if (isTrackedProcessing(note, trackedIds)) return 'Processing…';
+  return note.cleaned_text || note.raw_transcript || '…';
+}
+
 export default function Record() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -142,7 +179,6 @@ export default function Record() {
   const { user } = useAuth();
   const [recording, setRecording] = useState(false);
   const [secs, setSecs] = useState(0);
-  const [pendingNote, setPendingNote] = useState(null);
   const [uploadError, setUploadError] = useState('');
   const [toast, setToast] = useState('');
   const [textSubmitting, setTextSubmitting] = useState(false);
@@ -164,6 +200,25 @@ export default function Record() {
   const composeInputRef = useRef(null);
   const debounceRef = useRef(null);
   const toastTimerRef = useRef(null);
+  const [trackedIds, setTrackedIds] = useState(readTrackedIds);
+
+  const addTrackedId = useCallback((id) => {
+    setTrackedIds((prev) => {
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
+      writeTrackedIds(next);
+      return next;
+    });
+  }, []);
+
+  const removeTrackedId = useCallback((id) => {
+    setTrackedIds((prev) => {
+      if (!prev.includes(id)) return prev;
+      const next = prev.filter((x) => x !== id);
+      writeTrackedIds(next);
+      return next;
+    });
+  }, []);
 
   function resizeCompose(el) {
     if (!el) return;
@@ -203,26 +258,60 @@ export default function Record() {
   }, [notes]);
 
   useEffect(() => {
-    if (!pendingNote) return undefined;
-    const interval = setInterval(async () => {
+    setTrackedIds((prev) => {
+      const next = prev.filter((id) => {
+        const note = notes.find((n) => n.id === id);
+        return note && isInFlight(note) && isRecentInFlight(note);
+      });
+      if (next.length !== prev.length) writeTrackedIds(next);
+      return next;
+    });
+  }, [notes]);
+
+  const activeProcessingIds = useMemo(
+    () => notes.filter((n) => isTrackedProcessing(n, trackedIds)).map((n) => n.id),
+    [notes, trackedIds],
+  );
+  const hasVoiceInFlight = activeProcessingIds.length > 0;
+
+  useEffect(() => {
+    if (!activeProcessingIds.length) return undefined;
+
+    let cancelled = false;
+
+    async function pollProcessingNotes() {
       try {
-        const note = await api.getNote(pendingNote.id);
-        if (note.status === 'ready') {
-          setPendingNote(null);
-          loadNotes();
-          loadTags();
-          showToast('Indexed');
-        } else if (note.status === 'failed') {
-          setPendingNote(null);
-          setUploadError('Upload failed. Try again.');
+        const updates = await Promise.all(
+          activeProcessingIds.map((id) => api.getNote(id)),
+        );
+        if (cancelled) return;
+
+        setNotes((prev) =>
+          prev.map((n) => updates.find((u) => u.id === n.id) || n),
+        );
+
+        for (const note of updates) {
+          if (note.status === 'ready') {
+            removeTrackedId(note.id);
+            loadTags();
+            showToast('Indexed');
+          } else if (note.status === 'failed') {
+            removeTrackedId(note.id);
+            setUploadError('Upload failed. Try again.');
+          }
         }
       } catch {
-        setPendingNote(null);
-        setUploadError('Something went wrong.');
+        if (!cancelled) setUploadError('Something went wrong.');
       }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [pendingNote, loadNotes, loadTags]);
+    }
+
+    pollProcessingNotes();
+    const interval = setInterval(pollProcessingNotes, PROCESSING_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [activeProcessingIds.join(','), loadTags, removeTrackedId]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -262,6 +351,7 @@ export default function Record() {
   }
 
   function openNote(note) {
+    if (isTrackedProcessing(note, trackedIds)) return;
     setSelectedNote(note);
     if (isMobile) setSearchOpen(false);
   }
@@ -349,7 +439,7 @@ export default function Record() {
   }
 
   async function startRecording() {
-    if (pendingNote) return;
+    if (hasVoiceInFlight) return;
     setUploadError('');
     try {
       const stream = await getVoiceInputStream();
@@ -373,7 +463,8 @@ export default function Record() {
             secsRef.current,
             `recording.${recordedExt}`,
           );
-          setPendingNote(note);
+          addTrackedId(note.id);
+          await loadNotes();
         } catch (err) {
           setUploadError(
             err.message === 'Unauthorized'
@@ -416,8 +507,12 @@ export default function Record() {
     else startRecording();
   }
 
-  const readyNotes = notes.filter((n) => n.status === 'ready');
-  const grouped = groupNotes(readyNotes);
+  const feedNotes = notes.filter((n) => {
+    if (n.status === 'failed') return false;
+    if (isInFlight(n)) return isTrackedProcessing(n, trackedIds);
+    return true;
+  });
+  const grouped = groupNotes(feedNotes);
   const streak = computeStreak(notes);
   const userInitial = user?.email?.[0]?.toUpperCase() || '?';
   const composePlaceholder = userTags.length
@@ -438,7 +533,7 @@ export default function Record() {
           type="button"
           className={`record-btn${recording ? ' recording' : ''}`}
           onClick={toggleRecord}
-          disabled={!!pendingNote}
+          disabled={hasVoiceInFlight}
         >
           {recording ? (
             <svg viewBox="0 0 24 24">
@@ -555,56 +650,28 @@ export default function Record() {
     </div>
   );
 
-  const pendingEntries = (pendingNote || textSubmitting) && (
-    <>
-      <div className={isMobile ? 'entry-group-label' : 'group-label'}>Today</div>
-      {textSubmitting && (
-        <div className={isMobile ? 'entry entry-mobile' : 'entry'}>
-          {isMobile ? (
-            <>
-              <div className="entry-dot pending" />
-              <div className="entry-body">
-                <div className="entry-text pending">{pendingText}</div>
-                <div className="entry-meta">
-                  <span>processing</span>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="entry-text pending">{pendingText}</div>
-              <div className="entry-meta">
-                <div className="entry-dot pending" />
-                <span>processing</span>
-              </div>
-            </>
-          )}
-        </div>
+  const optimisticTextEntry = textSubmitting && (
+    <div className={isMobile ? 'entry entry-mobile' : 'entry'}>
+      {isMobile ? (
+        <>
+          <div className="entry-dot pending" />
+          <div className="entry-body">
+            <div className="entry-text pending">{pendingText}</div>
+            <div className="entry-meta">
+              <span>processing</span>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="entry-text pending">{pendingText}</div>
+          <div className="entry-meta">
+            <div className="entry-dot pending" />
+            <span>processing</span>
+          </div>
+        </>
       )}
-      {pendingNote && (
-        <div className={isMobile ? 'entry entry-mobile' : 'entry'}>
-          {isMobile ? (
-            <>
-              <div className="entry-dot voice" />
-              <div className="entry-body">
-                <div className="entry-text pending">Processing…</div>
-                <div className="entry-meta">
-                  <span>now</span>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="entry-text pending">Processing…</div>
-              <div className="entry-meta">
-                <div className="entry-dot voice" />
-                <span>now</span>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-    </>
+    </div>
   );
 
   const feedEmpty = (
@@ -662,27 +729,36 @@ export default function Record() {
               </div>
               <div className="mobile-bottom-area">
                 <div className="mobile-entries">
-                  {pendingEntries}
-                  {grouped.length === 0 && !pendingNote && !textSubmitting
-                    ? feedEmpty
-                    : grouped.map((group) => (
+                  {grouped.length === 0 && !textSubmitting ? (
+                    feedEmpty
+                  ) : (
+                    <>
+                      {textSubmitting && (
+                        <>
+                          <div className="entry-group-label">Today</div>
+                          {optimisticTextEntry}
+                        </>
+                      )}
+                      {grouped.map((group) => (
                         <div key={group.label}>
                           <div className="entry-group-label">{group.label}</div>
                           {group.notes.map((note) => (
                             <button
                               key={note.id}
                               type="button"
-                              className={`entry entry-mobile${selectedNote?.id === note.id ? ' active' : ''}`}
+                              className={`entry entry-mobile${selectedNote?.id === note.id ? ' active' : ''}${isTrackedProcessing(note, trackedIds) ? ' in-flight' : ''}`}
                               onClick={() => openNote(note)}
                             >
-                              <div className={`entry-dot${note.source === 'voice' ? ' voice' : ''}`} />
+                              <div
+                                className={`entry-dot${isTrackedProcessing(note, trackedIds) ? ' pending' : ''}${note.source === 'voice' && !isTrackedProcessing(note, trackedIds) ? ' voice' : ''}`}
+                              />
                               <div className="entry-body">
-                                <div className="entry-text">
-                                  {note.cleaned_text || note.raw_transcript || '…'}
+                                <div className={`entry-text${isTrackedProcessing(note, trackedIds) ? ' pending' : ''}`}>
+                                  {entryPreview(note, trackedIds)}
                                 </div>
                                 <div className="entry-meta">
-                                  <span>{formatNoteTime(note.created_at)}</span>
-                                  {note.tags?.[0] && (
+                                  <span>{isTrackedProcessing(note, trackedIds) ? 'processing' : formatNoteTime(note.created_at)}</span>
+                                  {!isTrackedProcessing(note, trackedIds) && note.tags?.[0] && (
                                     <span className="entry-tag">{note.tags[0]}</span>
                                   )}
                                 </div>
@@ -691,6 +767,8 @@ export default function Record() {
                           ))}
                         </div>
                       ))}
+                    </>
+                  )}
                 </div>
                 <div className="mobile-bottom-bar">
                   <button type="button" className="mobile-retrieve-row" onClick={openSearch}>
@@ -748,63 +826,49 @@ export default function Record() {
                 <span className="feed-title">Entries</span>
               </div>
               <div className="feed">
-                {(pendingNote || textSubmitting) && (
-                  <>
-                    <div className="group-label">Today</div>
-                    {textSubmitting && (
-                      <div className="entry">
-                        <div className="entry-text pending">{pendingText}</div>
-                        <div className="entry-meta">
-                          <div className="entry-dot pending" />
-                          <span>processing</span>
-                        </div>
-                      </div>
-                    )}
-                    {pendingNote && (
-                      <div className="entry">
-                        <div className="entry-text pending">Processing…</div>
-                        <div className="entry-meta">
-                          <div className="entry-dot voice" />
-                          <span>now</span>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-                {grouped.length === 0 && !pendingNote && !textSubmitting ? (
-                  <div className="feed-empty">
-                    <p className="feed-empty-head">No entries yet</p>
-                    <p className="feed-empty-sub">Your recordings will appear here</p>
-                  </div>
+                {grouped.length === 0 && !textSubmitting ? (
+                  feedEmpty
                 ) : (
-                  grouped.map((group) => (
-                    <div key={group.label}>
-                      <div className="group-label">{group.label}</div>
-                      {group.notes.map((note) => (
-                        <button
-                          key={note.id}
-                          type="button"
-                          className={`entry${selectedNote?.id === note.id ? ' active' : ''}`}
-                          onClick={() => openNote(note)}
-                        >
-                          <div className="entry-text">
-                            {note.cleaned_text || note.raw_transcript || '…'}
-                          </div>
-                          <TagPills
-                            tags={note.tags}
-                            noteId={note.id}
-                            onTagClick={searchByTag}
-                            onTagRemove={handleRemoveTag}
-                            editable
-                          />
-                          <div className="entry-meta">
-                            <div className={`entry-dot${note.source === 'voice' ? ' voice' : ''}`} />
-                            <span>{formatNoteTime(note.created_at)}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ))
+                  <>
+                    {textSubmitting && (
+                      <>
+                        <div className="group-label">Today</div>
+                        {optimisticTextEntry}
+                      </>
+                    )}
+                    {grouped.map((group) => (
+                      <div key={group.label}>
+                        <div className="group-label">{group.label}</div>
+                        {group.notes.map((note) => (
+                          <button
+                            key={note.id}
+                            type="button"
+                            className={`entry${selectedNote?.id === note.id ? ' active' : ''}${isTrackedProcessing(note, trackedIds) ? ' in-flight' : ''}`}
+                            onClick={() => openNote(note)}
+                          >
+                            <div className={`entry-text${isTrackedProcessing(note, trackedIds) ? ' pending' : ''}`}>
+                              {entryPreview(note, trackedIds)}
+                            </div>
+                            {!isTrackedProcessing(note, trackedIds) && (
+                              <TagPills
+                                tags={note.tags}
+                                noteId={note.id}
+                                onTagClick={searchByTag}
+                                onTagRemove={handleRemoveTag}
+                                editable
+                              />
+                            )}
+                            <div className="entry-meta">
+                              <div
+                                className={`entry-dot${isTrackedProcessing(note, trackedIds) ? ' pending' : ''}${note.source === 'voice' && !isTrackedProcessing(note, trackedIds) ? ' voice' : ''}`}
+                              />
+                              <span>{isTrackedProcessing(note, trackedIds) ? 'processing' : formatNoteTime(note.created_at)}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
             </>

@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 
 from .models import Note
 from .serializers import NoteSerializer, TextNoteSerializer
-from .services import get_user_tags_by_frequency, process_note
+from .services import fail_stale_processing_notes, get_user_tags_by_frequency, process_note
 from .tasks import dispatch_task, process_voice_note, tag_note
 
 logger = logging.getLogger(__name__)
@@ -86,6 +86,7 @@ class VoiceNoteView(APIView):
 
 class NoteListView(APIView):
     def get(self, request):
+        fail_stale_processing_notes(request.user)
         queryset = Note.objects.filter(user=request.user)
         paginator = NotePagination()
         page = paginator.paginate_queryset(queryset, request)
@@ -101,6 +102,7 @@ class TagListView(APIView):
 
 class NoteDetailView(APIView):
     def get(self, request, note_id):
+        fail_stale_processing_notes(request.user)
         try:
             note = Note.objects.get(id=note_id, user=request.user)
         except Note.DoesNotExist:

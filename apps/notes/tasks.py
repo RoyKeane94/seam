@@ -1,10 +1,12 @@
 import logging
 import os
 import threading
+import time
 
 import openai
 from celery import shared_task
 from django.conf import settings
+from django.db import close_old_connections
 
 from .models import Note
 from .services import apply_tags_to_note, process_note
@@ -12,31 +14,44 @@ from .services import apply_tags_to_note, process_note
 logger = logging.getLogger(__name__)
 
 
+def _run_in_thread(task, args, kwargs) -> None:
+    def runner() -> None:
+        close_old_connections()
+        try:
+            task.run(*args, **kwargs)
+        except Exception:
+            logger.exception('Background task %s failed', task.name)
+        finally:
+            close_old_connections()
+
+    threading.Thread(target=runner, daemon=True).start()
+
+
 def dispatch_task(task, *args, **kwargs) -> None:
-    """Queue via Celery when available; otherwise run in a background thread."""
+    """Queue via Celery in production; run in a background thread locally."""
+    if not settings.USE_CELERY:
+        _run_in_thread(task, args, kwargs)
+        return
+
     try:
         task.delay(*args, **kwargs)
     except Exception:
         logger.warning(
             'Celery unavailable for %s — running in background thread',
             task.name,
-            exc_info=True,
         )
-        threading.Thread(
-            target=task,
-            args=args,
-            kwargs=kwargs,
-            daemon=True,
-        ).start()
+        _run_in_thread(task, args, kwargs)
 
 
 @shared_task
 def process_voice_note(note_id: str, audio_path: str) -> None:
+    logger.info('Processing voice note %s', note_id)
     try:
         note = Note.objects.get(id=note_id)
         note.status = Note.Status.PROCESSING
         note.save(update_fields=['status'])
 
+        t0 = time.monotonic()
         client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
         with open(audio_path, 'rb') as audio_file:
             transcript = client.audio.transcriptions.create(
@@ -44,6 +59,11 @@ def process_voice_note(note_id: str, audio_path: str) -> None:
                 file=audio_file,
                 response_format='verbose_json',
             )
+        logger.info(
+            'Voice note %s: whisper done in %.1fs',
+            note_id,
+            time.monotonic() - t0,
+        )
 
         note.raw_transcript = transcript.text
         note.save(update_fields=['raw_transcript'])

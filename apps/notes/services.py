@@ -2,11 +2,14 @@ import json
 import logging
 import math
 import re
+import time
 from collections import Counter
+from datetime import timedelta
 
 import anthropic
 import openai
 from django.conf import settings
+from django.utils import timezone
 
 from .models import Chunk, Note
 
@@ -143,59 +146,93 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
+def _avg_embedding(a: list[float], b: list[float]) -> list[float]:
+    return [(x + y) / 2 for x, y in zip(a, b)]
+
+
 def merge_semantic_chunks(
     chunks: list[str],
     threshold: float | None = None,
-) -> list[str]:
+) -> tuple[list[str], list[list[float]]]:
+    """Merge adjacent chunks by embedding similarity. Returns texts and embeddings."""
     if threshold is None:
         threshold = settings.SEMANTIC_CHUNK_THRESHOLD
 
     merged = [c.strip() for c in chunks if c and c.strip()]
-    if len(merged) <= 1:
-        return merged
+    if not merged:
+        return [], []
 
+    embeddings = embed_texts(merged)
+    if len(merged) <= 1:
+        return merged, embeddings
+
+    merges_happened = False
     i = 0
     while i < len(merged) - 1:
-        left_emb, right_emb = embed_texts([merged[i], merged[i + 1]])
-        if _cosine_similarity(left_emb, right_emb) > threshold:
+        if _cosine_similarity(embeddings[i], embeddings[i + 1]) > threshold:
             merged[i] = f'{merged[i]} {merged[i + 1]}'.strip()
+            embeddings[i] = _avg_embedding(embeddings[i], embeddings[i + 1])
             del merged[i + 1]
+            del embeddings[i + 1]
+            merges_happened = True
         else:
             i += 1
 
-    return merged
+    if merges_happened:
+        embeddings = embed_texts(merged)
+
+    return merged, embeddings
 
 
 def process_note(note: Note, *, whisper_response=None) -> None:
+    started = time.monotonic()
     raw = note.raw_transcript or ''
 
-    logger.info('Note %s: cleaning text (%d chars)', note.id, len(raw))
-    cleaned = clean_text(raw)
+    t0 = time.monotonic()
+    skip_clean = (
+        note.source == Note.Source.VOICE
+        and len(raw) <= settings.VOICE_SKIP_CLEAN_MAX_CHARS
+    )
+    if skip_clean:
+        cleaned = ' '.join(raw.split())
+        logger.info('Note %s: skipped clean for short voice note (%d chars)', note.id, len(raw))
+    else:
+        cleaned = clean_text(raw)
+        logger.info(
+            'Note %s: cleaned text in %.1fs (%d chars)',
+            note.id,
+            time.monotonic() - t0,
+            len(raw),
+        )
     note.cleaned_text = cleaned
 
     if note.source == Note.Source.VOICE and whisper_response is not None:
-        logger.info('Note %s: chunking by whisper segments', note.id)
         texts = chunk_by_whisper_segments(whisper_response)
         if not texts:
-            logger.info('Note %s: no whisper segments, falling back to sentence chunking', note.id)
             texts = chunk_text(cleaned)
     else:
-        logger.info('Note %s: chunking cleaned text', note.id)
         texts = chunk_text(cleaned)
 
     pre_merge = len(texts)
-    texts = merge_semantic_chunks(texts)
-    logger.info(
-        'Note %s: semantic merge %d → %d chunk(s)',
-        note.id,
-        pre_merge,
-        len(texts),
-    )
+    # Voice notes are already split on pauses — skip merge for short recordings.
+    if note.source == Note.Source.VOICE and pre_merge <= 2:
+        embeddings = embed_texts(texts)
+        logger.info('Note %s: %d chunk(s), skipped semantic merge', note.id, len(texts))
+    else:
+        t0 = time.monotonic()
+        texts, embeddings = merge_semantic_chunks(texts)
+        logger.info(
+            'Note %s: semantic merge %d → %d chunk(s) in %.1fs',
+            note.id,
+            pre_merge,
+            len(texts),
+            time.monotonic() - t0,
+        )
 
-    logger.info('Note %s: embedding %d chunk(s)', note.id, len(texts))
-    embeddings = embed_texts(texts)
+    if texts and len(embeddings) != len(texts):
+        raise ValueError(f'Note {note.id}: expected {len(texts)} embeddings, got {len(embeddings)}')
 
-    logger.info('Note %s: saving chunks', note.id)
+    logger.info('Note %s: saving %d chunk(s) with embeddings', note.id, len(texts))
     note.chunks.all().delete()
     Chunk.objects.bulk_create([
         Chunk(
@@ -210,7 +247,7 @@ def process_note(note: Note, *, whisper_response=None) -> None:
 
     note.status = Note.Status.READY
     note.save(update_fields=['cleaned_text', 'status'])
-    logger.info('Note %s: ready', note.id)
+    logger.info('Note %s: ready in %.1fs', note.id, time.monotonic() - started)
 
 
 TAGGING_SYSTEM_PROMPT = """You are a tagging assistant. Extract 0–2 topic tags from a transcript.
@@ -312,6 +349,19 @@ def normalize_tags(new_tags: list[str], existing_corpus: list[str]) -> list[str]
             break
 
     return result[:2]
+
+
+def fail_stale_processing_notes(user) -> int:
+    """Mark abandoned pending/processing notes as failed."""
+    cutoff = timezone.now() - timedelta(minutes=settings.STALE_PROCESSING_MINUTES)
+    updated = Note.objects.filter(
+        user=user,
+        status__in=[Note.Status.PENDING, Note.Status.PROCESSING],
+        created_at__lt=cutoff,
+    ).update(status=Note.Status.FAILED)
+    if updated:
+        logger.info('Marked %d stale note(s) as failed for user %s', updated, user.id)
+    return updated
 
 
 def get_user_tag_corpus(user_id) -> list[str]:
