@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import re
 from collections import Counter
 
@@ -75,7 +76,56 @@ def chunk_text(
     return chunks
 
 
+def _segment_field(segment, field: str):
+    if isinstance(segment, dict):
+        return segment[field]
+    return getattr(segment, field)
+
+
+def _whisper_segments(whisper_response) -> list:
+    if isinstance(whisper_response, dict):
+        return whisper_response.get('segments') or []
+    return getattr(whisper_response, 'segments', None) or []
+
+
+def chunk_by_whisper_segments(
+    whisper_response,
+    pause_threshold: float | None = None,
+) -> list[str]:
+    if pause_threshold is None:
+        pause_threshold = settings.WHISPER_PAUSE_THRESHOLD
+
+    segments = _whisper_segments(whisper_response)
+    if not segments:
+        return []
+
+    chunks: list[str] = []
+    current: list[str] = []
+
+    for i, segment in enumerate(segments):
+        if i > 0:
+            gap = _segment_field(segment, 'start') - _segment_field(segments[i - 1], 'end')
+            if gap > pause_threshold and current:
+                chunk = ' '.join(current).strip()
+                if chunk:
+                    chunks.append(chunk)
+                current = []
+
+        text = _segment_field(segment, 'text').strip()
+        if text:
+            current.append(text)
+
+    if current:
+        chunk = ' '.join(current).strip()
+        if chunk:
+            chunks.append(chunk)
+
+    return chunks
+
+
 def embed_texts(texts: list[str]) -> list[list[float]]:
+    if not texts:
+        return []
     client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
     response = client.embeddings.create(
         model='text-embedding-3-small',
@@ -84,15 +134,63 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     return [item.embedding for item in response.data]
 
 
-def process_note(note: Note) -> None:
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(x * x for x in b))
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+def merge_semantic_chunks(
+    chunks: list[str],
+    threshold: float | None = None,
+) -> list[str]:
+    if threshold is None:
+        threshold = settings.SEMANTIC_CHUNK_THRESHOLD
+
+    merged = [c.strip() for c in chunks if c and c.strip()]
+    if len(merged) <= 1:
+        return merged
+
+    i = 0
+    while i < len(merged) - 1:
+        left_emb, right_emb = embed_texts([merged[i], merged[i + 1]])
+        if _cosine_similarity(left_emb, right_emb) > threshold:
+            merged[i] = f'{merged[i]} {merged[i + 1]}'.strip()
+            del merged[i + 1]
+        else:
+            i += 1
+
+    return merged
+
+
+def process_note(note: Note, *, whisper_response=None) -> None:
     raw = note.raw_transcript or ''
 
     logger.info('Note %s: cleaning text (%d chars)', note.id, len(raw))
     cleaned = clean_text(raw)
     note.cleaned_text = cleaned
 
-    logger.info('Note %s: chunking cleaned text', note.id)
-    texts = chunk_text(cleaned)
+    if note.source == Note.Source.VOICE and whisper_response is not None:
+        logger.info('Note %s: chunking by whisper segments', note.id)
+        texts = chunk_by_whisper_segments(whisper_response)
+        if not texts:
+            logger.info('Note %s: no whisper segments, falling back to sentence chunking', note.id)
+            texts = chunk_text(cleaned)
+    else:
+        logger.info('Note %s: chunking cleaned text', note.id)
+        texts = chunk_text(cleaned)
+
+    pre_merge = len(texts)
+    texts = merge_semantic_chunks(texts)
+    logger.info(
+        'Note %s: semantic merge %d → %d chunk(s)',
+        note.id,
+        pre_merge,
+        len(texts),
+    )
 
     logger.info('Note %s: embedding %d chunk(s)', note.id, len(texts))
     embeddings = embed_texts(texts)

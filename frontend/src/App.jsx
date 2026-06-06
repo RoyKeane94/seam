@@ -1,53 +1,52 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import GuestRoute from './components/GuestRoute';
 import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
+import Logout from './pages/Logout';
 import Register from './pages/Register';
 import Record from './pages/Record';
 import Search from './pages/Search';
-import { getToken } from './api';
+import Settings from './pages/Settings';
+
+function HomeRedirect() {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return null;
+  return <Navigate to={isAuthenticated ? '/record' : '/login'} replace />;
+}
 
 export default function App() {
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          getToken() ? <Navigate to="/record" replace /> : <Navigate to="/login" replace />
-        }
-      />
-      <Route
-        path="/login"
-        element={
-          <GuestRoute>
-            <Login />
-          </GuestRoute>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <GuestRoute>
-            <Register />
-          </GuestRoute>
-        }
-      />
-      <Route
-        path="/record"
-        element={
-          <ProtectedRoute>
-            <Record />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/search"
-        element={
-          <ProtectedRoute>
-            <Search />
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<HomeRedirect />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/logout" element={<Logout />} />
+        <Route
+          path="/record"
+          element={
+            <ProtectedRoute>
+              <Record />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/search"
+          element={
+            <ProtectedRoute>
+              <Search />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </AuthProvider>
   );
 }

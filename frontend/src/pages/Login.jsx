@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import AuthAside from '../components/AuthAside';
 import MarketingFooter from '../components/MarketingFooter';
 import MarketingNav from '../components/MarketingNav';
-import { api, setToken } from '../api';
+import { api } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +20,7 @@ export default function Login() {
     setLoading(true);
     try {
       const data = await api.login(email, password);
-      setToken(data.token);
+      signIn(data.token, data.user);
       navigate('/record');
     } catch (err) {
       setError(err.message || 'Incorrect email or password.');

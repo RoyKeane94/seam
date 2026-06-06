@@ -29,10 +29,12 @@ export function logout() {
   window.location.href = '/login';
 }
 
-async function parseResponse(response) {
+async function parseResponse(response, { redirectOn401 = true } = {}) {
   if (response.status === 401) {
     clearToken();
-    window.location.href = '/login';
+    if (redirectOn401) {
+      window.location.href = '/login';
+    }
     throw new Error('Unauthorized');
   }
 
@@ -54,15 +56,16 @@ async function parseResponse(response) {
 }
 
 export async function authedFetch(path, opts = {}) {
-  const isFormData = opts.body instanceof FormData;
+  const { redirectOn401 = true, ...fetchOpts } = opts;
+  const isFormData = fetchOpts.body instanceof FormData;
   const headers = {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token() ? { Authorization: `Token ${token()}` } : {}),
-    ...(opts.headers || {}),
+    ...(fetchOpts.headers || {}),
   };
 
-  const response = await fetch(BASE + path, { ...opts, headers });
-  return parseResponse(response);
+  const response = await fetch(BASE + path, { ...fetchOpts, headers });
+  return parseResponse(response, { redirectOn401 });
 }
 
 export async function publicFetch(path, opts = {}) {
@@ -101,10 +104,14 @@ export const api = {
     if (durationSecs != null) {
       form.append('duration_secs', String(durationSecs));
     }
-    return authedFetch('/notes/voice/', { method: 'POST', body: form });
+    return authedFetch('/notes/voice/', {
+      method: 'POST',
+      body: form,
+      redirectOn401: false,
+    });
   },
 
-  me: () => authedFetch('/auth/me/'),
+  me: () => authedFetch('/auth/me/', { redirectOn401: false }),
 
   listNotes: () => authedFetch('/notes/'),
 

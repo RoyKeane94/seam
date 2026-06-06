@@ -42,12 +42,13 @@ def process_voice_note(note_id: str, audio_path: str) -> None:
             transcript = client.audio.transcriptions.create(
                 model='whisper-1',
                 file=audio_file,
+                response_format='verbose_json',
             )
 
         note.raw_transcript = transcript.text
         note.save(update_fields=['raw_transcript'])
 
-        process_note(note)
+        process_note(note, whisper_response=transcript)
         dispatch_task(tag_note, str(note.id))
     except Exception:
         logger.exception('Voice note %s failed during processing', note_id)

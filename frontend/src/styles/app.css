@@ -2,29 +2,26 @@
   position: fixed;
   inset: 0;
   --bg: #ffffff;
-  --ink: #111110;
-  --ink-2: #2a2926;
-  --ink-soft: #706e69;
-  --faint: #b4b1a9;
-  --border: #efefef;
-  --border-2: #e5e5e5;
-  --yellow: #f2c94c;
-  --yellow-deep: #c9a017;
-  --yellow-soft: #fdf9ec;
-  --yellow-border: #e8d870;
-
+  --nav-bg: #fffdf5;
+  --ink: #0f0e0c;
+  --ink-2: #0f0e0c;
+  --ink-soft: #0f0e0c;
+  --faint: rgba(15, 14, 12, 0.5);
+  --border: rgba(15, 14, 12, 0.1);
+  --border-2: rgba(15, 14, 12, 0.18);
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--bg);
   color: var(--ink);
-  font-family: "DM Sans", sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 /* ── TOP BAR ── */
 .app-layout .topbar {
   height: 48px;
+  background: var(--nav-bg);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -35,11 +32,12 @@
 .app-layout .brand {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-weight: 500;
-  font-size: 13.5px;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 15px;
   letter-spacing: -0.02em;
   color: var(--ink);
+  text-decoration: none;
   background: none;
   border: none;
   cursor: pointer;
@@ -60,12 +58,13 @@
 .app-layout .topbar-retrieve {
   font-size: 13px;
   font-weight: 400;
-  color: var(--ink-soft);
+  color: var(--ink);
   background: none;
   border: none;
   cursor: pointer;
   padding: 0;
-  font-family: "DM Sans", sans-serif;
+  font-family: inherit;
+  text-decoration: none;
   transition: color 0.15s;
 }
 
@@ -81,7 +80,7 @@
   gap: 5px;
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
-  color: var(--faint);
+  color: var(--ink);
   letter-spacing: 0.05em;
 }
 
@@ -102,6 +101,7 @@
   font-size: 10px;
   font-weight: 500;
   color: #fff;
+  text-decoration: none;
   border: none;
   cursor: pointer;
 }
@@ -117,6 +117,7 @@
 .app-layout .col-feed {
   width: 380px;
   flex: none;
+  background: var(--bg);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -129,11 +130,13 @@
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+  background: var(--bg);
 }
 
 .app-layout .feed-header {
   flex: none;
   height: 48px;
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -145,7 +148,7 @@
   font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--ink);
 }
 
 .app-layout .feed {
@@ -156,16 +159,28 @@
 
 .app-layout .feed-empty {
   padding: 32px 28px;
+}
+
+.app-layout .feed-empty-head {
   font-size: 13px;
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.app-layout .feed-empty-sub {
+  margin-top: 6px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12.5px;
+  font-style: italic;
   color: var(--faint);
-  font-weight: 300;
+  line-height: 1.5;
 }
 
 .app-layout .group-label {
   padding: 20px 28px 6px;
   font-size: 11px;
   font-weight: 500;
-  color: var(--faint);
+  color: var(--ink);
   letter-spacing: -0.01em;
 }
 
@@ -186,16 +201,20 @@
 }
 
 .app-layout .entry:hover {
-  background: var(--yellow-soft);
+  background: var(--nav-bg);
+  border-left: 2px solid var(--ink);
+  padding-left: 26px;
 }
 
 .app-layout .entry.active {
-  background: var(--yellow-soft);
+  background: var(--nav-bg);
+  border-left: 2px solid var(--ink);
+  padding-left: 26px;
 }
 
 .app-layout .entry-text {
   font-size: 13.5px;
-  color: var(--ink-2);
+  color: var(--ink);
   line-height: 1.5;
   font-weight: 300;
   margin-bottom: 3px;
@@ -437,6 +456,7 @@
   align-items: stretch;
   overflow: hidden;
   min-width: 0;
+  background: var(--bg);
 }
 
 /* ── ENTRY READER ── */
@@ -710,7 +730,7 @@
 }
 
 .app-layout .compose-input::placeholder {
-  color: var(--faint);
+  color: rgba(15, 14, 12, 0.45);
 }
 
 .app-layout .compose-input:disabled {
@@ -846,4 +866,73 @@
   .app-layout .entry-reader-toolbar {
     padding: 0 20px;
   }
+}
+
+/* ── SETTINGS ── */
+.settings-layout .settings-main {
+  flex: 1;
+  overflow-y: auto;
+  max-width: 520px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 40px 24px 56px;
+}
+
+.settings-title {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 32px;
+}
+
+.settings-section {
+  margin-bottom: 28px;
+}
+
+.settings-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 10px;
+}
+
+.settings-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+}
+
+.settings-row-label {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.settings-row-value {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.settings-signout {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.settings-signout:hover {
+  color: var(--ink);
 }

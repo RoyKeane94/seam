@@ -1,16 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
 import LogoMark from './LogoMark';
-import { logout } from '../api';
 
 export default function Nav() {
   const { pathname } = useLocation();
 
   return (
     <div className="nav">
-      <Link to="/record" className="brand">
+      <a href="/" className="brand">
         <LogoMark />
         seam
-      </Link>
+      </a>
       <div className="nav-right">
         <Link
           to="/record"
@@ -24,9 +23,9 @@ export default function Nav() {
         >
           Search
         </Link>
-        <button type="button" className="nav-signout" onClick={logout}>
+        <Link to="/logout" className="nav-signout">
           Sign out
-        </button>
+        </Link>
       </div>
     </div>
   );

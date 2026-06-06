@@ -163,6 +163,9 @@ ANTHROPIC_TAGGING_MODEL = config(
     default='claude-haiku-4-5-20251001',
 )
 
+WHISPER_PAUSE_THRESHOLD = config('WHISPER_PAUSE_THRESHOLD', default=2.0, cast=float)
+SEMANTIC_CHUNK_THRESHOLD = config('SEMANTIC_CHUNK_THRESHOLD', default=0.80, cast=float)
+
 # Leave empty to accept any invite code during development
 INVITE_CODE = config('INVITE_CODE', default='')
 

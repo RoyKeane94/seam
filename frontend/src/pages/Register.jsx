@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import AuthAside from '../components/AuthAside';
 import MarketingFooter from '../components/MarketingFooter';
 import MarketingNav from '../components/MarketingNav';
-import { api, setToken } from '../api';
+import { api } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Register() {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -38,7 +40,7 @@ export default function Register() {
         last_name: lastName.trim(),
         invite_code: inviteCode.trim(),
       });
-      setToken(data.token);
+      signIn(data.token, data.user);
       navigate('/record');
     } catch (err) {
       setError(err.message || 'Something went wrong. Try again.');

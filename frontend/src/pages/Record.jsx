@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LogoMark from '../components/LogoMark';
-import { api, logout } from '../api';
+import { api, getToken } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 const MAX_RECORDING_SECS = 300;
 
@@ -132,7 +133,7 @@ export default function Record() {
 
   const [text, setText] = useState('');
   const [notes, setNotes] = useState([]);
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [recording, setRecording] = useState(false);
   const [secs, setSecs] = useState(0);
   const [pendingNote, setPendingNote] = useState(null);
@@ -184,7 +185,6 @@ export default function Record() {
   useEffect(() => {
     loadNotes();
     loadTags();
-    api.me().then(setUser).catch(() => {});
   }, [loadNotes, loadTags]);
 
   useEffect(() => {
@@ -339,11 +339,19 @@ export default function Record() {
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        if (!getToken()) {
+          setUploadError('Session expired. Sign in again to save recordings.');
+          return;
+        }
         try {
           const note = await api.createVoiceNote(blob, secsRef.current);
           setPendingNote(note);
-        } catch {
-          setUploadError('Upload failed. Try again.');
+        } catch (err) {
+          setUploadError(
+            err.message === 'Unauthorized'
+              ? 'Session expired. Sign in again to save recordings.'
+              : 'Upload failed. Try again.',
+          );
         }
       };
       mediaRecorderRef.current = recorder;
@@ -398,17 +406,10 @@ export default function Record() {
   return (
     <div className="app-layout">
       <header className="topbar">
-        <button
-          type="button"
-          className="brand"
-          onClick={() => {
-            closeNote();
-            switchTab('record');
-          }}
-        >
+        <a href="/" className="brand">
           <LogoMark size={22} />
           seam
-        </button>
+        </a>
         <div className="topbar-spacer" />
         <div className="topbar-right">
           <button
@@ -424,15 +425,14 @@ export default function Record() {
               {streak} {streak === 1 ? 'day' : 'days'}
             </div>
           )}
-          <button
-            type="button"
+          <Link
+            to="/settings"
             className="nav-avatar"
-            onClick={logout}
-            title="Sign out"
-            aria-label="Sign out"
+            title="Settings"
+            aria-label="Settings"
           >
             {userInitial}
-          </button>
+          </Link>
         </div>
       </header>
 
@@ -468,7 +468,10 @@ export default function Record() {
                   </>
                 )}
                 {grouped.length === 0 && !pendingNote && !textSubmitting ? (
-                  <div className="feed-empty">No entries yet</div>
+                  <div className="feed-empty">
+                    <p className="feed-empty-head">No entries yet</p>
+                    <p className="feed-empty-sub">Your recordings will appear here</p>
+                  </div>
                 ) : (
                   grouped.map((group) => (
                     <div key={group.label}>
