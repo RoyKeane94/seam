@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LogoMark from '../components/LogoMark';
 import { api, getToken } from '../api';
 import { useAuth } from '../context/AuthContext';
+import useMediaQuery from '../hooks/useMediaQuery';
 
 const MAX_RECORDING_SECS = 300;
 
@@ -125,11 +126,15 @@ function formatReaderTime(iso) {
 export default function Record() {
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [tab, setTab] = useState(location.pathname === '/search' ? 'retrieve' : 'record');
+  const [searchOpen, setSearchOpen] = useState(location.pathname === '/search');
 
   useEffect(() => {
-    setTab(location.pathname === '/search' ? 'retrieve' : 'record');
-  }, [location.pathname]);
+    const onSearch = location.pathname === '/search';
+    setTab(onSearch ? 'retrieve' : 'record');
+    if (isMobile) setSearchOpen(onSearch);
+  }, [location.pathname, isMobile]);
 
   const [text, setText] = useState('');
   const [notes, setNotes] = useState([]);
@@ -161,7 +166,8 @@ export default function Record() {
   function resizeCompose(el) {
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
+    const max = isMobile ? 120 : 140;
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
   }
 
   const loadNotes = useCallback(async () => {
@@ -255,23 +261,37 @@ export default function Record() {
 
   function openNote(note) {
     setSelectedNote(note);
+    if (isMobile) setSearchOpen(false);
   }
 
   function switchTab(name) {
     setSelectedNote(null);
     setTab(name);
+    if (isMobile) setSearchOpen(name === 'retrieve');
     navigate(name === 'retrieve' ? '/search' : '/record', { replace: true });
     if (name === 'retrieve') {
-      setTimeout(() => retrieveInputRef.current?.focus(), 50);
+      setTimeout(() => retrieveInputRef.current?.focus(), isMobile ? 320 : 50);
     }
+  }
+
+  function openSearch() {
+    switchTab('retrieve');
+  }
+
+  function closeSearch() {
+    setSearchOpen(false);
+    setQuery('');
+    setTab('record');
+    navigate('/record', { replace: true });
   }
 
   function searchByTag(tag) {
     setSelectedNote(null);
     setTab('retrieve');
     setQuery(tag);
+    if (isMobile) setSearchOpen(true);
     navigate('/search', { replace: true });
-    setTimeout(() => retrieveInputRef.current?.focus(), 50);
+    setTimeout(() => retrieveInputRef.current?.focus(), isMobile ? 320 : 50);
   }
 
   async function handleRemoveTag(noteId, tag) {
@@ -403,22 +423,207 @@ export default function Record() {
     retrieveEmpty = { head: 'Nothing yet', sub: "You haven't said anything about this" };
   }
 
+  const recordControls = (
+    <>
+      <div className={`record-glow${recording ? ' active' : ''}`}>
+        <button
+          type="button"
+          className={`record-btn${recording ? ' recording' : ''}`}
+          onClick={toggleRecord}
+          disabled={!!pendingNote}
+        >
+          {recording ? (
+            <svg viewBox="0 0 24 24">
+              <rect x="7" y="7" width="10" height="10" rx="2" fill="white" stroke="white" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24">
+              <rect x="9" y="3" width="6" height="11" rx="3" />
+              <path d="M6 11a6 6 0 0 0 12 0M12 17v4" />
+            </svg>
+          )}
+        </button>
+      </div>
+      <div className={`record-timer${recording ? ' visible' : ''}`}>{formatTime(secs)}</div>
+    </>
+  );
+
+  const composeArea = (
+    <div className={`compose-row${textSubmitting ? ' submitting' : ''}`}>
+      <textarea
+        ref={composeInputRef}
+        className="compose-input"
+        placeholder={composePlaceholder}
+        rows={1}
+        value={text}
+        disabled={textSubmitting}
+        onChange={(e) => {
+          setText(e.target.value);
+          resizeCompose(e.target);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendText();
+          }
+        }}
+      />
+      {textSubmitting ? (
+        <div className="compose-spinner" aria-label="Saving">
+          <span className="compose-spinner-ring" />
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={`compose-send${text.trim() ? ' visible' : ''}`}
+          onClick={handleSendText}
+        >
+          <svg viewBox="0 0 24 24">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+
+  const retrieveResults = (
+    <>
+      {searchLoading && <div className="search-loading">Searching…</div>}
+      {retrieveEmpty && !searchLoading ? (
+        <div className="retrieve-empty">
+          <div className="retrieve-empty-head">{retrieveEmpty.head}</div>
+          <div className="retrieve-empty-sub">{retrieveEmpty.sub}</div>
+        </div>
+      ) : (
+        !searchLoading &&
+        results.map((result, i) => (
+          <div key={`${result.note_id}-${i}`} className="result-item">
+            <div className="result-text">{highlightText(result.text, query)}</div>
+            <div className="result-meta">{formatResultMeta(result.created_at)}</div>
+          </div>
+        ))
+      )}
+    </>
+  );
+
+  const entryReader = selectedNote && (
+    <div className="entry-reader">
+      <div className="entry-reader-toolbar">
+        <button type="button" className="entry-reader-back" onClick={closeNote}>
+          ← Record
+        </button>
+        <button
+          type="button"
+          className="entry-reader-delete"
+          onClick={() => handleDeleteNote(selectedNote.id)}
+        >
+          Delete
+        </button>
+      </div>
+      <div className="entry-reader-scroll">
+        <div className="entry-reader-meta">
+          <span className="entry-reader-date">{formatReaderDate(selectedNote.created_at)}</span>
+          <span className="entry-reader-time">{formatReaderTime(selectedNote.created_at)}</span>
+          <span className="entry-reader-tags">
+            <span className={`entry-reader-tag${selectedNote.source === 'voice' ? ' voice' : ''}`}>
+              {selectedNote.source === 'voice' ? 'Voice' : 'Text'}
+            </span>
+            {selectedNote.source === 'voice' && selectedNote.duration_secs != null && (
+              <span className="entry-reader-tag">{formatTime(selectedNote.duration_secs)}</span>
+            )}
+          </span>
+        </div>
+        <TagPills
+          tags={selectedNote.tags}
+          noteId={selectedNote.id}
+          onTagClick={searchByTag}
+          onTagRemove={handleRemoveTag}
+          editable
+        />
+        <div className="entry-reader-body">
+          {selectedNote.cleaned_text || selectedNote.raw_transcript || '…'}
+        </div>
+      </div>
+    </div>
+  );
+
+  const pendingEntries = (pendingNote || textSubmitting) && (
+    <>
+      <div className={isMobile ? 'entry-group-label' : 'group-label'}>Today</div>
+      {textSubmitting && (
+        <div className={isMobile ? 'entry entry-mobile' : 'entry'}>
+          {isMobile ? (
+            <>
+              <div className="entry-dot pending" />
+              <div className="entry-body">
+                <div className="entry-text pending">{pendingText}</div>
+                <div className="entry-meta">
+                  <span>processing</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="entry-text pending">{pendingText}</div>
+              <div className="entry-meta">
+                <div className="entry-dot pending" />
+                <span>processing</span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      {pendingNote && (
+        <div className={isMobile ? 'entry entry-mobile' : 'entry'}>
+          {isMobile ? (
+            <>
+              <div className="entry-dot voice" />
+              <div className="entry-body">
+                <div className="entry-text pending">Processing…</div>
+                <div className="entry-meta">
+                  <span>now</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="entry-text pending">Processing…</div>
+              <div className="entry-meta">
+                <div className="entry-dot voice" />
+                <span>now</span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  const feedEmpty = (
+    <div className="feed-empty">
+      <p className="feed-empty-head">No entries yet</p>
+      <p className="feed-empty-sub">Your recordings will appear here</p>
+    </div>
+  );
+
   return (
-    <div className="app-layout">
+    <div className={`app-layout${isMobile ? ' mobile' : ''}`}>
       <header className="topbar">
         <a href="/" className="brand">
-          <LogoMark size={22} />
+          <LogoMark size={isMobile ? 24 : 22} />
           seam
         </a>
         <div className="topbar-spacer" />
         <div className="topbar-right">
-          <button
-            type="button"
-            className={`topbar-retrieve${tab === 'retrieve' ? ' active' : ''}`}
-            onClick={() => switchTab('retrieve')}
-          >
-            Retrieve
-          </button>
+          {!isMobile && (
+            <button
+              type="button"
+              className={`topbar-retrieve${tab === 'retrieve' ? ' active' : ''}`}
+              onClick={() => switchTab('retrieve')}
+            >
+              Retrieve
+            </button>
+          )}
           {streak > 0 && (
             <div className="nav-streak">
               <div className="streak-pip" />
@@ -436,7 +641,98 @@ export default function Record() {
         </div>
       </header>
 
-      <div className="app-body">
+      {isMobile ? (
+        <main className="mobile-main">
+          {selectedNote ? (
+            entryReader
+          ) : (
+            <>
+              <div className="mobile-record-section">
+                <div className="record-header">{recordControls}</div>
+                {composeArea}
+                {uploadError && <p className="upload-error">{uploadError}</p>}
+              </div>
+              <div className="mobile-bottom-area">
+                <div className="mobile-entries">
+                  {pendingEntries}
+                  {grouped.length === 0 && !pendingNote && !textSubmitting
+                    ? feedEmpty
+                    : grouped.map((group) => (
+                        <div key={group.label}>
+                          <div className="entry-group-label">{group.label}</div>
+                          {group.notes.map((note) => (
+                            <button
+                              key={note.id}
+                              type="button"
+                              className={`entry entry-mobile${selectedNote?.id === note.id ? ' active' : ''}`}
+                              onClick={() => openNote(note)}
+                            >
+                              <div className={`entry-dot${note.source === 'voice' ? ' voice' : ''}`} />
+                              <div className="entry-body">
+                                <div className="entry-text">
+                                  {note.cleaned_text || note.raw_transcript || '…'}
+                                </div>
+                                <div className="entry-meta">
+                                  <span>{formatNoteTime(note.created_at)}</span>
+                                  {note.tags?.[0] && (
+                                    <span className="entry-tag">{note.tags[0]}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                </div>
+                <div className="mobile-bottom-bar">
+                  <button type="button" className="mobile-retrieve-row" onClick={openSearch}>
+                    <div className="retrieve-icon">
+                      <svg viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.35-4.35" />
+                      </svg>
+                    </div>
+                    <span className="retrieve-label">Retrieve</span>
+                    <span className="retrieve-hint">Ask anything</span>
+                  </button>
+                  <div className="safe-area" />
+                </div>
+              </div>
+            </>
+          )}
+          <div className={`search-overlay${searchOpen ? ' open' : ''}`}>
+            <div className="search-bar">
+              <svg viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+              <input
+                ref={retrieveInputRef}
+                className="search-field"
+                type="text"
+                placeholder="What did I say about…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <button type="button" className="search-cancel" onClick={closeSearch}>
+                Cancel
+              </button>
+            </div>
+            {userTags.length > 0 && (
+              <div className="search-chips">
+                {userTags.map((chip) => (
+                  <button key={chip} type="button" className="chip" onClick={() => setQuery(chip)}>
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="search-results">{retrieveResults}</div>
+          </div>
+          <div className={`toast mobile-toast${toast ? ' show' : ''}`}>{toast}</div>
+        </main>
+      ) : (
+      <div className="app-body desktop-only">
         <aside className="col-feed">
           {tab === 'record' ? (
             <>
@@ -559,112 +855,12 @@ export default function Record() {
 
         <div className="col-main">
           {selectedNote ? (
-            <div className="entry-reader">
-              <div className="entry-reader-toolbar">
-                <button type="button" className="entry-reader-back" onClick={closeNote}>
-                  ← Record
-                </button>
-                <button
-                  type="button"
-                  className="entry-reader-delete"
-                  onClick={() => handleDeleteNote(selectedNote.id)}
-                >
-                  Delete
-                </button>
-              </div>
-              <div className="entry-reader-scroll">
-                <div className="entry-reader-meta">
-                  <span className="entry-reader-date">
-                    {formatReaderDate(selectedNote.created_at)}
-                  </span>
-                  <span className="entry-reader-time">
-                    {formatReaderTime(selectedNote.created_at)}
-                  </span>
-                  <span className="entry-reader-tags">
-                    <span
-                      className={`entry-reader-tag${selectedNote.source === 'voice' ? ' voice' : ''}`}
-                    >
-                      {selectedNote.source === 'voice' ? 'Voice' : 'Text'}
-                    </span>
-                    {selectedNote.source === 'voice' && selectedNote.duration_secs != null && (
-                      <span className="entry-reader-tag">{formatTime(selectedNote.duration_secs)}</span>
-                    )}
-                  </span>
-                </div>
-                <TagPills
-                  tags={selectedNote.tags}
-                  noteId={selectedNote.id}
-                  onTagClick={searchByTag}
-                  onTagRemove={handleRemoveTag}
-                  editable
-                />
-                <div className="entry-reader-body">
-                  {selectedNote.cleaned_text || selectedNote.raw_transcript || '…'}
-                </div>
-              </div>
-            </div>
+            entryReader
           ) : (
             <>
               <div className="compose-top">
-                <div className="record-header">
-                  <div className={`record-glow${recording ? ' active' : ''}`}>
-                    <button
-                      type="button"
-                      className={`record-btn${recording ? ' recording' : ''}`}
-                      onClick={toggleRecord}
-                      disabled={!!pendingNote}
-                    >
-                      {recording ? (
-                        <svg viewBox="0 0 24 24">
-                          <rect x="7" y="7" width="10" height="10" rx="2" fill="white" stroke="white" />
-                        </svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24">
-                          <rect x="9" y="3" width="6" height="11" rx="3" />
-                          <path d="M6 11a6 6 0 0 0 12 0M12 17v4" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                  <div className={`record-timer${recording ? ' visible' : ''}`}>
-                    {formatTime(secs)}
-                  </div>
-                </div>
-                <div className={`compose-row${textSubmitting ? ' submitting' : ''}`}>
-                  <textarea
-                    ref={composeInputRef}
-                    className="compose-input"
-                    placeholder={composePlaceholder}
-                    rows={1}
-                    value={text}
-                    disabled={textSubmitting}
-                    onChange={(e) => {
-                      setText(e.target.value);
-                      resizeCompose(e.target);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendText();
-                      }
-                    }}
-                  />
-                  {textSubmitting ? (
-                    <div className="compose-spinner" aria-label="Saving">
-                      <span className="compose-spinner-ring" />
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      className={`compose-send${text.trim() ? ' visible' : ''}`}
-                      onClick={handleSendText}
-                    >
-                      <svg viewBox="0 0 24 24">
-                        <path d="M5 12h14M13 6l6 6-6 6" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
+                <div className="record-header">{recordControls}</div>
+                {composeArea}
                 {userTags.length > 0 && (
                   <div className="compose-prompts">
                     {userTags.slice(0, 8).map((tag) => (
@@ -691,8 +887,9 @@ export default function Record() {
           )}
         </div>
       </div>
+      )}
 
-      <div className={`toast${toast ? ' show' : ''}`}>{toast}</div>
+      {!isMobile && <div className={`toast${toast ? ' show' : ''}`}>{toast}</div>}
     </div>
   );
 }
