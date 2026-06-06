@@ -10,8 +10,7 @@ from decouple import config, Csv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='build-time-key-not-for-production-use')
-ENVIRONMENT = config('ENVIRONMENT', default='development')
-DEBUG = config('DEBUG', default=(ENVIRONMENT == 'development'), cast=bool)
+DEBUG = config('DEBUG', cast=bool)
 
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
