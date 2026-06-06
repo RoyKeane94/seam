@@ -13,3 +13,5 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+
+CMD ["sh", "-c", "gunicorn seam_website.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3"]
