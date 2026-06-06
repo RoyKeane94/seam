@@ -7,6 +7,10 @@ FRONTEND_DIR = settings.BASE_DIR / 'frontend' / 'dist'
 PUBLIC_DIR = settings.BASE_DIR / 'frontend' / 'public'
 
 
+def health(request):
+    return HttpResponse('ok', content_type='text/plain')
+
+
 def landing(request):
     return render(request, 'landing.html')
 

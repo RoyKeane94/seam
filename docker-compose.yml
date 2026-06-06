@@ -1,6 +1,8 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     command: gunicorn --bind 0.0.0.0:8000 --workers 3 seam_website.wsgi:application
     volumes:
       - .:/app
@@ -13,7 +15,9 @@ services:
       - redis
 
   celery:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     command: celery -A seam_website worker -l info
     volumes:
       - .:/app

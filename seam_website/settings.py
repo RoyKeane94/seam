@@ -18,7 +18,7 @@ ALLOWED_HOSTS = list(config(
     cast=Csv(),
 ))
 # Railway health checks hit localhost / healthcheck.railway.app
-for _host in ('healthcheck.railway.app', '.up.railway.app', 'localhost', '127.0.0.1'):
+for _host in ('healthcheck.railway.app', '.railway.app', '.up.railway.app', 'localhost', '127.0.0.1'):
     if _host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(_host)
 

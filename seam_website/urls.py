@@ -3,9 +3,10 @@ from django.urls import include, path, re_path
 
 from apps.notes.views import TagListView
 
-from .views import api_root, landing, serve_frontend_asset, serve_public_file, spa
+from .views import api_root, health, landing, serve_frontend_asset, serve_public_file, spa
 
 urlpatterns = [
+    path('health/', health, name='health'),
     path('', landing, name='landing'),
     path('favicon.svg', serve_public_file, {'path': 'favicon.svg'}),
     path('admin/', admin.site.urls),
