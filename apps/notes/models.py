@@ -60,6 +60,7 @@ class Chunk(models.Model):
     chunk_index = models.IntegerField()
     text = models.TextField()
     embedding = VectorField(dimensions=1536)
+    embedding_model = models.CharField(max_length=64, default='text-embedding-3-small')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

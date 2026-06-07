@@ -12,4 +12,4 @@ class NoteAdmin(admin.ModelAdmin):
 
 @admin.register(Chunk)
 class ChunkAdmin(admin.ModelAdmin):
-    list_display = ('id', 'note', 'chunk_index', 'created_at')
+    list_display = ('id', 'note', 'chunk_index', 'embedding_model', 'created_at')

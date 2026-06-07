@@ -242,7 +242,7 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
         return []
     client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
     response = client.embeddings.create(
-        model='text-embedding-3-small',
+        model=settings.EMBEDDING_MODEL,
         input=texts,
     )
     return [item.embedding for item in response.data]
@@ -341,6 +341,7 @@ def process_note(note: Note, *, whisper_response=None) -> None:
         raise EmptyNoteError('No content to index')
 
     logger.info('Note %s: saving %d chunk(s) with embeddings', note.id, len(texts))
+    embedding_model = settings.EMBEDDING_MODEL
     note.chunks.all().delete()
     Chunk.objects.bulk_create([
         Chunk(
@@ -349,6 +350,7 @@ def process_note(note: Note, *, whisper_response=None) -> None:
             chunk_index=i,
             text=text,
             embedding=embedding,
+            embedding_model=embedding_model,
         )
         for i, (text, embedding) in enumerate(zip(texts, embeddings))
     ])
