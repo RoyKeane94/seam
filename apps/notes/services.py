@@ -237,12 +237,16 @@ def chunk_by_whisper_segments(
     return chunks
 
 
+def get_embedding_model() -> str:
+    return settings.EMBEDDING_MODEL
+
+
 def embed_texts(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
     client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
     response = client.embeddings.create(
-        model=settings.EMBEDDING_MODEL,
+        model=get_embedding_model(),
         input=texts,
     )
     return [item.embedding for item in response.data]
@@ -341,7 +345,7 @@ def process_note(note: Note, *, whisper_response=None) -> None:
         raise EmptyNoteError('No content to index')
 
     logger.info('Note %s: saving %d chunk(s) with embeddings', note.id, len(texts))
-    embedding_model = settings.EMBEDDING_MODEL
+    embedding_model = get_embedding_model()
     note.chunks.all().delete()
     Chunk.objects.bulk_create([
         Chunk(
