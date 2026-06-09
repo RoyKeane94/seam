@@ -19,8 +19,8 @@ function HomeRedirect() {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <AuthProvider>
+    <AuthProvider>
+      <ErrorBoundary>
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<HomeRedirect />} />
@@ -54,7 +54,7 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
-      </AuthProvider>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </AuthProvider>
   );
 }

@@ -779,6 +779,7 @@ export default function Record() {
   const composePlaceholder = userTags.length
     ? `What's on your mind about ${userTags[0]}…`
     : "What's on your mind…";
+  const mobileComposePlaceholder = 'Or type a note';
 
   let retrieveEmpty = null;
   if (!query.trim()) {
@@ -817,7 +818,7 @@ export default function Record() {
       <textarea
         ref={composeInputRef}
         className="compose-input"
-        placeholder={composePlaceholder}
+        placeholder={isMobile ? mobileComposePlaceholder : composePlaceholder}
         rows={1}
         value={text}
         disabled={textSubmitting}
@@ -1518,7 +1519,7 @@ export default function Record() {
                     </>
                   )}
                 </div>
-                {renderPagination(mobileEntriesPage, setMobileEntriesPage, mobileEntriesTotalPages)}
+                {renderPagination(mobileEntriesPage, setMobileEntriesPage, notesTotalPages)}
                 <div className="mobile-bottom-bar">
                   <button type="button" className="mobile-retrieve-row" onClick={openSearch}>
                     <div className="retrieve-icon">
