@@ -18,6 +18,27 @@ function formatProcessingFailure(note) {
   return 'Failed to process note. Try again.';
 }
 
+function IconExternalOpen() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 17 17 7" />
+      <path d="M7 7h10v10" />
+    </svg>
+  );
+}
+
+function IconTrash() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v5" />
+      <path d="M14 11v5" />
+    </svg>
+  );
+}
+
 function TagPills({ tags, noteId, onTagClick, onTagRemove, editable = false }) {
   if (!tags?.length) return null;
   return (
@@ -155,8 +176,7 @@ function formatReaderTime(iso) {
 const PROCESSING_POLL_MS = 4000;
 const TRACKING_KEY = 'seam_processing_ids';
 const CLIENT_TRACK_MS = 5 * 60 * 1000;
-const SIDEBAR_TODAY_LIMIT = 10;
-const ALL_NOTES_PAGE_SIZE = 10;
+const NOTES_PAGE_SIZE = 10;
 
 function isInFlight(note) {
   return note.status === 'pending' || note.status === 'processing';
@@ -188,7 +208,11 @@ function isTrackedProcessing(note, trackedIds) {
 
 function entryPreview(note, trackedIds) {
   if (isTrackedProcessing(note, trackedIds)) return 'Processing…';
-  return note.cleaned_text || note.raw_transcript || '…';
+  return note.preview || note.cleaned_text || note.raw_transcript || '…';
+}
+
+function noteBodyText(note) {
+  return note.cleaned_text || note.raw_transcript || note.preview || '…';
 }
 
 export default function Record() {
@@ -223,7 +247,12 @@ export default function Record() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [sidebarView, setSidebarView] = useState('today');
   const [expandedAllNoteId, setExpandedAllNoteId] = useState(null);
+  const [expandedTodayNoteId, setExpandedTodayNoteId] = useState(null);
+  const [todayTextOpen, setTodayTextOpen] = useState(false);
+  const [loadingNoteId, setLoadingNoteId] = useState(null);
+  const loadedNoteIdsRef = useRef(new Set());
   const [allNotesPage, setAllNotesPage] = useState(1);
+  const [todayPage, setTodayPage] = useState(1);
   const [mobileEntriesPage, setMobileEntriesPage] = useState(1);
 
   const mediaRecorderRef = useRef(null);
@@ -232,6 +261,8 @@ export default function Record() {
   const timerRef = useRef(null);
   const secsRef = useRef(0);
   const retrieveInputRef = useRef(null);
+  const todayRetrieveInputRef = useRef(null);
+  const todayComposeInputRef = useRef(null);
   const composeInputRef = useRef(null);
   const debounceRef = useRef(null);
   const toastTimerRef = useRef(null);
@@ -265,7 +296,15 @@ export default function Record() {
   const loadNotes = useCallback(async () => {
     try {
       const data = await api.listNotes();
-      setNotes(data.results || []);
+      const incoming = data.results || [];
+      setNotes((prev) =>
+        incoming.map((note) => {
+          if (!loadedNoteIdsRef.current.has(note.id)) return note;
+          const cached = prev.find((n) => n.id === note.id);
+          if (!cached?.cleaned_text && !cached?.raw_transcript) return note;
+          return { ...note, cleaned_text: cached.cleaned_text, raw_transcript: cached.raw_transcript };
+        }),
+      );
     } catch {
       /* ignore */
     }
@@ -283,8 +322,14 @@ export default function Record() {
   useEffect(() => {
     if (sidebarView !== 'all') {
       setExpandedAllNoteId(null);
-    } else {
+    }
+    if (sidebarView === 'all') {
       setAllNotesPage(1);
+    }
+    if (sidebarView === 'today') {
+      setTodayPage(1);
+      setExpandedTodayNoteId(null);
+      setTodayTextOpen(false);
     }
   }, [sidebarView]);
 
@@ -349,7 +394,14 @@ export default function Record() {
 
         const resolved = updates.filter((u) => u.note);
         setNotes((prev) =>
-          prev.map((n) => resolved.find((u) => u.note.id === n.id)?.note || n),
+          prev.map((n) => {
+            const updated = resolved.find((u) => u.note.id === n.id)?.note;
+            if (!updated) return n;
+            if (updated.cleaned_text || updated.raw_transcript) {
+              loadedNoteIdsRef.current.add(updated.id);
+            }
+            return { ...n, ...updated };
+          }),
         );
 
         for (const { note } of resolved) {
@@ -430,10 +482,30 @@ export default function Record() {
     setSelectedNote(null);
   }
 
+  async function openTodayNote(note) {
+    if (isTrackedProcessing(note, trackedIds)) return;
+    setExpandedTodayNoteId(null);
+    setSelectedNote(note);
+    if (!loadedNoteIdsRef.current.has(note.id)) {
+      try {
+        await fetchNoteDetail(note.id);
+      } catch {
+        showToast('Failed to load note');
+      }
+    }
+  }
+
+  function collapseTodayNote() {
+    setExpandedTodayNoteId(null);
+  }
+
   function openNote(note) {
     if (isTrackedProcessing(note, trackedIds)) return;
     setSelectedNote(note);
     if (isMobile) setSearchOpen(false);
+    if (!loadedNoteIdsRef.current.has(note.id)) {
+      fetchNoteDetail(note.id).catch(() => showToast('Failed to load note'));
+    }
   }
 
   function switchTab(name) {
@@ -459,15 +531,79 @@ export default function Record() {
 
   function searchByTag(tag) {
     setSelectedNote(null);
-    setTab('retrieve');
     setQuery(tag);
     if (isMobile) {
+      setTab('retrieve');
       setSearchOpen(true);
-    } else {
-      setSidebarView('retrieve');
+      navigate('/search', { replace: true });
+      setTimeout(() => retrieveInputRef.current?.focus(), 320);
+      return;
     }
+    if (sidebarView === 'today') {
+      setTimeout(() => todayRetrieveInputRef.current?.focus(), 50);
+      return;
+    }
+    setSidebarView('retrieve');
+    setTab('retrieve');
     navigate('/search', { replace: true });
-    setTimeout(() => retrieveInputRef.current?.focus(), isMobile ? 320 : 50);
+    setTimeout(() => retrieveInputRef.current?.focus(), 50);
+  }
+
+  function openTodayTextCompose() {
+    setTodayTextOpen(true);
+    requestAnimationFrame(() => {
+      todayComposeInputRef.current?.focus();
+      resizeCompose(todayComposeInputRef.current);
+    });
+  }
+
+  const fetchNoteDetail = useCallback(async (noteId) => {
+    if (loadedNoteIdsRef.current.has(noteId)) {
+      return null;
+    }
+    const full = await api.getNote(noteId);
+    loadedNoteIdsRef.current.add(noteId);
+    setNotes((prev) => prev.map((n) => (n.id === full.id ? { ...n, ...full } : n)));
+    setSelectedNote((current) => (current?.id === full.id ? { ...current, ...full } : current));
+    return full;
+  }, []);
+
+  async function toggleTodayNoteExpand(note) {
+    if (isTrackedProcessing(note, trackedIds)) return;
+    if (expandedTodayNoteId === note.id) {
+      setExpandedTodayNoteId(null);
+      return;
+    }
+    setExpandedTodayNoteId(note.id);
+    if (loadedNoteIdsRef.current.has(note.id)) return;
+    setLoadingNoteId(note.id);
+    try {
+      await fetchNoteDetail(note.id);
+    } catch {
+      setExpandedTodayNoteId(null);
+      showToast('Failed to load note');
+    } finally {
+      setLoadingNoteId(null);
+    }
+  }
+
+  async function toggleAllNoteExpand(note) {
+    if (isTrackedProcessing(note, trackedIds)) return;
+    if (expandedAllNoteId === note.id) {
+      setExpandedAllNoteId(null);
+      return;
+    }
+    setExpandedAllNoteId(note.id);
+    if (loadedNoteIdsRef.current.has(note.id)) return;
+    setLoadingNoteId(note.id);
+    try {
+      await fetchNoteDetail(note.id);
+    } catch {
+      setExpandedAllNoteId(null);
+      showToast('Failed to load note');
+    } finally {
+      setLoadingNoteId(null);
+    }
   }
 
   async function handleRemoveTag(noteId, tag) {
@@ -503,10 +639,14 @@ export default function Record() {
     if (composeInputRef.current) {
       composeInputRef.current.style.height = 'auto';
     }
+    if (todayComposeInputRef.current) {
+      todayComposeInputRef.current.style.height = 'auto';
+    }
 
     try {
       await api.createTextNote(trimmed);
       loadNotes();
+      setTodayTextOpen(false);
       showToast('Saved');
       window.setTimeout(() => {
         loadNotes();
@@ -515,6 +655,7 @@ export default function Record() {
     } catch (err) {
       setText(trimmed);
       resizeCompose(composeInputRef.current);
+      resizeCompose(todayComposeInputRef.current);
       showToast(err.message || MSG_NOTHING_SAVED);
     } finally {
       setTextSubmitting(false);
@@ -597,34 +738,42 @@ export default function Record() {
     if (isInFlight(n)) return isTrackedProcessing(n, trackedIds);
     return true;
   });
-  const todayNotes = feedNotes.slice(0, SIDEBAR_TODAY_LIMIT);
+  const notesTotalPages = Math.max(1, Math.ceil(feedNotes.length / NOTES_PAGE_SIZE));
   const grouped = groupNotes(feedNotes);
-  const allNotesTotalPages = Math.max(1, Math.ceil(feedNotes.length / ALL_NOTES_PAGE_SIZE));
-  const mobileEntriesTotalPages = allNotesTotalPages;
+  const paginatedTodayNotes = useMemo(() => {
+    const start = (todayPage - 1) * NOTES_PAGE_SIZE;
+    return feedNotes.slice(start, start + NOTES_PAGE_SIZE);
+  }, [feedNotes, todayPage]);
   const paginatedAllNotes = useMemo(() => {
-    const start = (allNotesPage - 1) * ALL_NOTES_PAGE_SIZE;
-    return feedNotes.slice(start, start + ALL_NOTES_PAGE_SIZE);
+    const start = (allNotesPage - 1) * NOTES_PAGE_SIZE;
+    return feedNotes.slice(start, start + NOTES_PAGE_SIZE);
   }, [feedNotes, allNotesPage]);
   const paginatedMobileNotes = useMemo(() => {
-    const start = (mobileEntriesPage - 1) * ALL_NOTES_PAGE_SIZE;
-    return feedNotes.slice(start, start + ALL_NOTES_PAGE_SIZE);
+    const start = (mobileEntriesPage - 1) * NOTES_PAGE_SIZE;
+    return feedNotes.slice(start, start + NOTES_PAGE_SIZE);
   }, [feedNotes, mobileEntriesPage]);
   const mobileGrouped = groupNotes(paginatedMobileNotes);
   const allNotesRangeStart =
-    feedNotes.length === 0 ? 0 : (allNotesPage - 1) * ALL_NOTES_PAGE_SIZE + 1;
-  const allNotesRangeEnd = Math.min(allNotesPage * ALL_NOTES_PAGE_SIZE, feedNotes.length);
+    feedNotes.length === 0 ? 0 : (allNotesPage - 1) * NOTES_PAGE_SIZE + 1;
+  const allNotesRangeEnd = Math.min(allNotesPage * NOTES_PAGE_SIZE, feedNotes.length);
 
   useEffect(() => {
-    if (allNotesPage > allNotesTotalPages) {
-      setAllNotesPage(allNotesTotalPages);
+    if (todayPage > notesTotalPages) {
+      setTodayPage(notesTotalPages);
     }
-  }, [allNotesPage, allNotesTotalPages]);
+  }, [todayPage, notesTotalPages]);
 
   useEffect(() => {
-    if (mobileEntriesPage > mobileEntriesTotalPages) {
-      setMobileEntriesPage(mobileEntriesTotalPages);
+    if (allNotesPage > notesTotalPages) {
+      setAllNotesPage(notesTotalPages);
     }
-  }, [mobileEntriesPage, mobileEntriesTotalPages]);
+  }, [allNotesPage, notesTotalPages]);
+
+  useEffect(() => {
+    if (mobileEntriesPage > notesTotalPages) {
+      setMobileEntriesPage(notesTotalPages);
+    }
+  }, [mobileEntriesPage, notesTotalPages]);
   const streak = computeStreak(notes);
   const userInitial = user?.email?.[0]?.toUpperCase() || '?';
   const composePlaceholder = userTags.length
@@ -701,6 +850,23 @@ export default function Record() {
     </div>
   );
 
+  const todayRetrieveBar = (
+    <div className="today-retrieve-bar">
+      <svg className="today-retrieve-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
+      <input
+        ref={todayRetrieveInputRef}
+        className="today-retrieve-input"
+        type="text"
+        placeholder={composePlaceholder}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+    </div>
+  );
+
   const retrieveResults = (
     <>
       {searchLoading && <div className="search-loading">Searching…</div>}
@@ -725,14 +891,16 @@ export default function Record() {
     <div className="entry-reader">
       <div className="entry-reader-toolbar">
         <button type="button" className="entry-reader-back" onClick={closeNote}>
-          ← {sidebarView === 'all' ? 'All notes' : 'Record'}
+          ←{' '}
+          {sidebarView === 'all' ? 'All notes' : sidebarView === 'today' ? 'Today' : 'Record'}
         </button>
         <button
           type="button"
-          className="entry-reader-delete"
+          className={`entry-reader-delete${sidebarView === 'today' ? ' today-icon-btn today-icon-btn--delete' : ''}`}
           onClick={() => handleDeleteNote(selectedNote.id)}
+          aria-label="Delete note"
         >
-          Delete
+          {sidebarView === 'today' ? <IconTrash /> : 'Delete'}
         </button>
       </div>
       <div className="entry-reader-scroll">
@@ -756,7 +924,7 @@ export default function Record() {
           editable
         />
         <div className="entry-reader-body">
-          {selectedNote.cleaned_text || selectedNote.raw_transcript || '…'}
+          {noteBodyText(selectedNote)}
         </div>
       </div>
     </div>
@@ -793,15 +961,12 @@ export default function Record() {
     </div>
   );
 
-  function toggleAllNoteExpand(note) {
-    if (isTrackedProcessing(note, trackedIds)) return;
-    setExpandedAllNoteId((current) => (current === note.id ? null : note.id));
-  }
-
   function renderAllNotesEntry(note) {
     const expanded = expandedAllNoteId === note.id;
-    const fullText = note.cleaned_text || note.raw_transcript || '…';
+    const previewText = entryPreview(note, trackedIds);
+    const fullText = noteBodyText(note);
     const processing = isTrackedProcessing(note, trackedIds);
+    const isLoading = loadingNoteId === note.id;
 
     return (
       <div
@@ -817,7 +982,7 @@ export default function Record() {
           >
             {!expanded && (
               <div className={`all-notes-entry-preview${processing ? ' pending' : ''}`}>
-                {processing ? 'Processing…' : fullText}
+                {processing ? 'Processing…' : previewText}
               </div>
             )}
             {!processing && note.tags?.length > 0 && (
@@ -865,15 +1030,110 @@ export default function Record() {
             )}
           </div>
         </div>
-        {expanded && !processing && (
-          <div className="all-notes-entry-body">{fullText}</div>
-        )}
+        <div className={`all-notes-entry-body-wrap${expanded ? ' open' : ''}`}>
+          <div className="all-notes-entry-body-inner">
+            {!processing && (
+              <div className="all-notes-entry-body">
+                {isLoading ? 'Loading…' : fullText}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
 
   function renderAllNotesList() {
     return paginatedAllNotes.map((note) => renderAllNotesEntry(note));
+  }
+
+  function renderTodayEntry(note) {
+    const expanded = expandedTodayNoteId === note.id;
+    const previewText = entryPreview(note, trackedIds);
+    const fullText = noteBodyText(note);
+    const processing = isTrackedProcessing(note, trackedIds);
+    const isLoading = loadingNoteId === note.id;
+
+    return (
+      <div
+        key={note.id}
+        className={`today-note-entry${expanded ? ' expanded' : ''}${processing ? ' in-flight' : ''}`}
+      >
+        <div className={`today-note-entry-header${expanded ? ' expanded' : ''}`}>
+          <button
+            type="button"
+            className="today-note-entry-row"
+            onClick={() => toggleTodayNoteExpand(note)}
+            aria-expanded={expanded}
+          >
+            {!expanded && (
+              <div className={`entry-text${processing ? ' pending' : ''}`}>
+                {processing ? 'Processing…' : previewText}
+              </div>
+            )}
+            {!processing && note.tags?.length > 0 && (
+              <TagPills
+                tags={note.tags}
+                noteId={note.id}
+                onTagClick={searchByTag}
+                onTagRemove={handleRemoveTag}
+                editable
+              />
+            )}
+            <div className="entry-meta">
+              <div
+                className={`entry-dot${processing ? ' pending' : ''}${note.source === 'voice' && !processing ? ' voice' : ''}`}
+              />
+              <span>{processing ? 'processing' : formatNoteTime(note.created_at)}</span>
+            </div>
+          </button>
+          {expanded && !processing && (
+            <div className="today-note-entry-actions">
+              <button
+                type="button"
+                className="today-icon-btn today-icon-btn--open"
+                onClick={() => openTodayNote(note)}
+                aria-label="Open note"
+              >
+                <IconExternalOpen />
+              </button>
+              <button
+                type="button"
+                className="today-icon-btn today-icon-btn--delete"
+                aria-label="Delete note"
+                onClick={() => {
+                  setExpandedTodayNoteId(null);
+                  handleDeleteNote(note.id);
+                }}
+              >
+                <IconTrash />
+              </button>
+            </div>
+          )}
+        </div>
+        <div className={`today-note-entry-body-wrap${expanded ? ' open' : ''}`}>
+          <div className="today-note-entry-body-inner">
+            {!processing && (
+              <div
+                className="today-note-entry-body"
+                onClick={collapseTodayNote}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    collapseTodayNote();
+                  }
+                }}
+                role="button"
+                tabIndex={expanded ? 0 : -1}
+                aria-label="Collapse note"
+              >
+                {isLoading ? 'Loading…' : fullText}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   function renderFeedEntry(note) {
@@ -972,7 +1232,7 @@ export default function Record() {
   );
 
   function renderPagination(page, setPage, totalPages, onPageChange) {
-    if (feedNotes.length <= ALL_NOTES_PAGE_SIZE) return null;
+    if (feedNotes.length <= NOTES_PAGE_SIZE) return null;
     return (
       <div className="entries-pagination">
         <button
@@ -1024,9 +1284,146 @@ export default function Record() {
           </>
         )}
       </div>
-      {renderPagination(allNotesPage, setAllNotesPage, allNotesTotalPages, () =>
+      {renderPagination(allNotesPage, setAllNotesPage, notesTotalPages, () =>
         setExpandedAllNoteId(null),
       )}
+    </div>
+  );
+
+  const todayNotesPanel = (
+    <div className="today-notes-panel">
+      {!query.trim() && <div className="today-section-label">Today&apos;s notes</div>}
+      <div className="today-notes-list">
+        {query.trim() ? (
+          <div className="today-retrieve-results">{retrieveResults}</div>
+        ) : feedNotes.length === 0 && !textSubmitting ? (
+          feedEmpty
+        ) : (
+          <>
+            {textSubmitting && todayPage === 1 && optimisticTextEntry}
+            {paginatedTodayNotes.map((note) => renderTodayEntry(note))}
+          </>
+        )}
+      </div>
+      {!query.trim() && renderPagination(todayPage, setTodayPage, notesTotalPages, () =>
+        setExpandedTodayNoteId(null),
+      )}
+    </div>
+  );
+
+  const recordComposeBlock = (
+    <div className="compose-top">
+      <div className="record-header">{recordControls}</div>
+      {composeArea}
+      {userTags.length > 0 && (
+        <div className="compose-prompts">
+          {userTags.slice(0, 8).map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              className="chip"
+              onClick={() => {
+                if (!text.trim()) {
+                  setText(`Thinking about ${tag}…`);
+                  resizeCompose(composeInputRef.current);
+                  composeInputRef.current?.focus();
+                }
+              }}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const todayTopBlock = (
+    <div className="today-top">
+      <div
+        className={`today-capture-pill${todayTextOpen ? ' typing' : ''}${recording ? ' recording' : ''}${textSubmitting ? ' submitting' : ''}`}
+      >
+        <button
+          type="button"
+          className="today-pill-record"
+          onClick={toggleRecord}
+          disabled={hasVoiceInFlight}
+          aria-label={recording ? 'Stop recording' : 'Start recording'}
+        >
+          <span className={`today-pill-mic${recording ? ' recording' : ''}`}>
+            {recording ? (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="7" y="7" width="10" height="10" rx="2" fill="white" stroke="white" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="9" y="3" width="6" height="11" rx="3" />
+                <path d="M6 11a6 6 0 0 0 12 0M12 17v4" />
+              </svg>
+            )}
+          </span>
+          <span className="today-pill-record-label">
+            {recording ? formatTime(secs) : 'Record'}
+          </span>
+        </button>
+        <div className="today-pill-divider" aria-hidden="true" />
+        <div className="today-pill-type">
+          {todayTextOpen ? (
+            <>
+              <svg className="today-pill-pencil" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+              <textarea
+                ref={todayComposeInputRef}
+                className="today-capture-input"
+                placeholder={composePlaceholder}
+                rows={1}
+                value={text}
+                disabled={textSubmitting}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  resizeCompose(e.target);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendText();
+                  }
+                }}
+              />
+              {textSubmitting ? (
+                <div className="compose-spinner" aria-label="Saving">
+                  <span className="compose-spinner-ring" />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={`compose-send${text.trim() ? ' visible' : ''}`}
+                  onClick={handleSendText}
+                >
+                  <svg viewBox="0 0 24 24">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                </button>
+              )}
+            </>
+          ) : (
+            <button
+              type="button"
+              className="today-pill-type-trigger"
+              onClick={openTodayTextCompose}
+            >
+              <svg className="today-pill-pencil" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+              <span>or type a note…</span>
+            </button>
+          )}
+        </div>
+      </div>
+      {todayRetrieveBar}
     </div>
   );
 
@@ -1170,7 +1567,7 @@ export default function Record() {
         </main>
       ) : (
       <div className="app-body desktop-only">
-        <aside className="col-feed">
+        <aside className={`col-feed${sidebarView === 'retrieve' ? ' with-feed' : ' nav-only'}`}>
           <nav className="sidebar-nav" aria-label="Sidebar">
             <div className="sidebar-section-label">Core</div>
             <button
@@ -1204,17 +1601,9 @@ export default function Record() {
             </button>
           </nav>
 
-          {(sidebarView === 'today' || sidebarView === 'retrieve') && (
-          <div className={`feed feed-${sidebarView}`}>
-            {sidebarView === 'today' && (
-              todayNotes.length === 0 && !textSubmitting ? (
-                feedEmpty
-              ) : (
-                renderEntryList(todayNotes)
-              )
-            )}
-
-            {sidebarView === 'retrieve' && sidebarRetrievePanel}
+          {sidebarView === 'retrieve' && (
+          <div className="feed feed-retrieve">
+            {sidebarRetrievePanel}
           </div>
           )}
         </aside>
@@ -1224,33 +1613,13 @@ export default function Record() {
             entryReader
           ) : sidebarView === 'all' ? (
             allNotesPanel
-          ) : (
+          ) : sidebarView === 'today' ? (
             <>
-              <div className="compose-top">
-                <div className="record-header">{recordControls}</div>
-                {composeArea}
-                {userTags.length > 0 && (
-                  <div className="compose-prompts">
-                    {userTags.slice(0, 8).map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        className="chip"
-                        onClick={() => {
-                          if (!text.trim()) {
-                            setText(`Thinking about ${tag}…`);
-                            resizeCompose(composeInputRef.current);
-                            composeInputRef.current?.focus();
-                          }
-                        }}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {todayTopBlock}
+              {todayNotesPanel}
             </>
+          ) : (
+            recordComposeBlock
           )}
         </div>
       </div>

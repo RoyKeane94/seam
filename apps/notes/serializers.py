@@ -4,6 +4,30 @@ from .models import Note
 from .services import word_count
 
 
+class NoteListSerializer(serializers.ModelSerializer):
+    preview = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Note
+        fields = (
+            'id',
+            'created_at',
+            'source',
+            'preview',
+            'duration_secs',
+            'status',
+            'error_message',
+            'tags',
+        )
+        read_only_fields = fields
+
+    def get_preview(self, obj) -> str:
+        text = (obj.cleaned_text or obj.raw_transcript or '').strip()
+        if len(text) <= 220:
+            return text
+        return f'{text[:220]}…'
+
+
 class NoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Note

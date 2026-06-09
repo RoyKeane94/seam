@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Note
-from .serializers import NoteSerializer, TextNoteSerializer
+from .serializers import NoteListSerializer, NoteSerializer, TextNoteSerializer
 from .services import (
     EmptyNoteError,
     fail_stale_processing_notes,
@@ -106,10 +106,23 @@ class VoiceNoteView(APIView):
 class NoteListView(APIView):
     def get(self, request):
         fail_stale_processing_notes(request.user)
-        queryset = Note.objects.filter(user=request.user)
+        queryset = (
+            Note.objects.filter(user=request.user)
+            .only(
+                'id',
+                'created_at',
+                'source',
+                'raw_transcript',
+                'cleaned_text',
+                'duration_secs',
+                'status',
+                'error_message',
+                'tags',
+            )
+        )
         paginator = NotePagination()
         page = paginator.paginate_queryset(queryset, request)
-        serializer = NoteSerializer(page, many=True)
+        serializer = NoteListSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -122,9 +135,22 @@ class TagListView(APIView):
 class NoteDetailView(APIView):
     def get(self, request, note_id):
         fail_stale_processing_notes(request.user)
-        try:
-            note = Note.objects.get(id=note_id, user=request.user)
-        except Note.DoesNotExist:
+        note = (
+            Note.objects.filter(id=note_id, user=request.user)
+            .only(
+                'id',
+                'created_at',
+                'source',
+                'raw_transcript',
+                'cleaned_text',
+                'duration_secs',
+                'status',
+                'error_message',
+                'tags',
+            )
+            .first()
+        )
+        if note is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(NoteSerializer(note).data)
 

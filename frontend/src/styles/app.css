@@ -124,6 +124,10 @@
   overflow: hidden;
 }
 
+.app-layout .col-feed.nav-only {
+  width: 220px;
+}
+
 .app-layout .sidebar-nav {
   flex: none;
   padding: 16px 16px 12px;
@@ -868,6 +872,408 @@
   align-items: stretch;
   width: 100%;
   padding: 24px 0 0;
+}
+
+.app-layout .today-notes-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-layout .today-top {
+  flex: none;
+  padding: 20px 40px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-layout .today-capture-pill {
+  display: flex;
+  align-items: stretch;
+  min-height: 52px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.app-layout .today-capture-pill.typing,
+.app-layout .today-capture-pill.recording {
+  border-color: rgba(15, 14, 12, 0.14);
+  box-shadow: 0 2px 12px rgba(15, 14, 12, 0.04);
+}
+
+.app-layout .today-capture-pill.submitting {
+  opacity: 0.75;
+}
+
+.app-layout .today-pill-record {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 22px 8px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s ease;
+}
+
+.app-layout .today-pill-record:hover:not(:disabled) {
+  background: rgba(15, 14, 12, 0.02);
+}
+
+.app-layout .today-pill-record:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.app-layout .today-pill-mic {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--yellow);
+  display: grid;
+  place-items: center;
+  flex: none;
+  transition: background 0.15s ease;
+}
+
+.app-layout .today-pill-mic.recording {
+  background: #111110;
+}
+
+.app-layout .today-pill-mic svg {
+  width: 13px;
+  height: 13px;
+  stroke: var(--ink);
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-layout .today-pill-mic.recording svg {
+  stroke: #fff;
+  fill: #fff;
+}
+
+.app-layout .today-pill-record-label {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.app-layout .today-pill-divider {
+  width: 1px;
+  flex: none;
+  align-self: stretch;
+  background: var(--border);
+  margin: 10px 0;
+}
+
+.app-layout .today-pill-type {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 12px;
+}
+
+.app-layout .today-pill-type-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--faint);
+  text-align: left;
+  transition: color 0.12s ease;
+}
+
+.app-layout .today-pill-type-trigger:hover {
+  color: var(--ink-soft);
+}
+
+.app-layout .today-pill-pencil {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  stroke: var(--faint);
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-layout .today-capture-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.45;
+  resize: none;
+  outline: none;
+  max-height: 120px;
+  padding: 2px 0;
+}
+
+.app-layout .today-capture-input::placeholder {
+  color: var(--faint);
+}
+
+.app-layout .today-capture-input:disabled {
+  opacity: 0.7;
+}
+
+.app-layout .today-pill-type .compose-send,
+.app-layout .today-pill-type .compose-spinner {
+  flex: none;
+}
+
+.app-layout .today-retrieve-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--nav-bg);
+  border: 1px solid rgba(15, 14, 12, 0.06);
+}
+
+.app-layout .today-retrieve-icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  stroke: var(--faint);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.app-layout .today-retrieve-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: #fff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink);
+  outline: none;
+}
+
+.app-layout .today-retrieve-input::placeholder {
+  color: var(--faint);
+}
+
+.app-layout .today-section-label {
+  flex: none;
+  padding: 16px 40px 10px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.app-layout .today-notes-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 0 16px;
+}
+
+.app-layout .today-note-entry {
+  border-bottom: 1px solid var(--border);
+}
+
+.app-layout .today-note-entry-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.app-layout .today-note-entry-header.expanded {
+  background: var(--nav-bg);
+}
+
+.app-layout .today-note-entry-row {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  padding: 12px 0 12px 40px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.1s;
+}
+
+.app-layout .today-note-entry-row:hover {
+  background: transparent;
+}
+
+.app-layout .today-note-entry-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 40px 10px 0;
+}
+
+.app-layout .today-note-entry-row .entry-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.app-layout .today-note-entry-body-wrap,
+.app-layout .all-notes-entry-body-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.16s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.app-layout .today-note-entry-body-wrap.open,
+.app-layout .all-notes-entry-body-wrap.open {
+  grid-template-rows: 1fr;
+}
+
+.app-layout .today-note-entry-body-inner,
+.app-layout .all-notes-entry-body-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.app-layout .today-note-entry-body {
+  padding: 20px 40px 24px;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.65;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: pointer;
+}
+
+.app-layout .today-note-entry-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 40px 10px 0;
+}
+
+.app-layout .today-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.app-layout .today-icon-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: var(--ink);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-layout .today-icon-btn--open:hover {
+  background: #fff;
+  border-color: var(--border-2);
+}
+
+.app-layout .today-icon-btn--delete svg {
+  stroke: #c0392b;
+}
+
+.app-layout .today-icon-btn--delete:hover {
+  background: rgba(192, 57, 43, 0.08);
+  border-color: rgba(192, 57, 43, 0.28);
+}
+
+.app-layout .entry-reader-toolbar .entry-reader-delete.today-icon-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: inherit;
+}
+
+.app-layout .entry-reader-toolbar .entry-reader-delete.today-icon-btn:hover {
+  background: rgba(192, 57, 43, 0.08);
+  border-color: rgba(192, 57, 43, 0.28);
+  opacity: 1;
+}
+
+.app-layout .entry-reader-toolbar .entry-reader-delete.today-icon-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: #c0392b;
+}
+
+.app-layout .all-notes-entry-body-wrap.open .all-notes-entry-body {
+  padding-top: 0;
+}
+
+.app-layout .today-retrieve-results {
+  padding: 8px 0 16px;
+}
+
+.app-layout .today-retrieve-results .result-item {
+  padding: 14px 40px;
+  cursor: pointer;
+}
+
+.app-layout .today-retrieve-results .result-item:hover {
+  background: var(--nav-bg);
+}
+
+.app-layout .today-retrieve-results .retrieve-empty {
+  padding: 40px;
+}
+
+.app-layout .today-retrieve-results .search-loading {
+  padding: 20px 40px;
+}
+
+.app-layout .today-notes-panel .entries-pagination {
+  flex: none;
+  border-top: 1px solid var(--border);
+  padding: 12px 40px 16px;
 }
 
 .app-layout .record-header {
